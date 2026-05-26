@@ -1,0 +1,29 @@
+name: CI - Pull Request
+
+on:
+  pull_request:
+
+env:
+  REGISTRY: ghcr.io
+  ORG: openresilienceinitiative
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+
+    - name: Validate token service
+      uses: ./.github/actions/node-validate
+      with:
+        node_version: '20'
+
+    - name: Create Docker image
+      uses: ./.github/actions/docker-build-push
+      with:
+        push_to_ghcr: false
+        image_name: livekit-token-service
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        context_dir: token-service

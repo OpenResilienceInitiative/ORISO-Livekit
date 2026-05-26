@@ -1,0 +1,26 @@
+name: Reusable Node Validation steps
+
+inputs:
+  node_version:
+    required: true
+    type: string
+
+runs:
+  using: 'composite'
+  steps:
+  - name: Set up Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: ${{ inputs.node_version }}
+      cache: npm
+      cache-dependency-path: token-service/package.json
+
+  - name: Install dependencies
+    shell: bash
+    run: npm install
+    working-directory: token-service
+
+  - name: Validate server entrypoint syntax
+    shell: bash
+    run: node --check server.js
+    working-directory: token-service

@@ -23,6 +23,9 @@ spec:
         - name: http
           containerPort: 3010
           protocol: TCP
+        env:
+        - name: LIVEKIT_URL
+          value: "wss://livekit.oriso.org"
         resources:
           requests:
             memory: "128Mi"

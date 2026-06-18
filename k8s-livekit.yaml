@@ -116,10 +116,10 @@ spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - livekit.oriso.site
+    - livekit.oriso.org
     secretName: livekit-tls
   rules:
-  - host: livekit.oriso.site
+  - host: livekit.oriso.org
     http:
       paths:
       # MatrixRTC Authorization Service (LiveKit JWT)

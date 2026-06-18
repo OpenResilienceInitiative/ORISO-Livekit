@@ -84,10 +84,17 @@ async function handleSfuRequest(req, res) {
 
         const jwt = await at.toJwt();
 
-        // LiveKit server URL (WebSocket URL for connecting)
-        const livekitUrl = process.env.LIVEKIT_URL || 'wss://livekit.oriso.site';
+        // WebSocket URL returned to Element Call for /rtc/validate — must match
+        // the deployed LiveKit ingress host (e.g. wss://livekit.oriso.org).
+        const livekitUrl = process.env.LIVEKIT_URL?.trim();
+        if (!livekitUrl) {
+            console.error('❌ LIVEKIT_URL env is not set on token-service');
+            return res.status(500).json({
+                error: 'LIVEKIT_URL not configured on token service',
+            });
+        }
 
-        console.log(`✅ SFU token generated for room ${room}, identity: ${identity}`);
+        console.log(`✅ SFU token generated for room ${room}, identity: ${identity}, url: ${livekitUrl}`);
 
         // Element Call expects: { url, jwt }
         res.json({ url: livekitUrl, jwt });

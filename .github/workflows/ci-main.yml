@@ -35,3 +35,11 @@ jobs:
         image_name: matrixrtc-auth-policy-gateway
         github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: token-service
+
+    - name: Create and Publish privacy-safe authorization service
+      uses: ./.github/actions/docker-build-push
+      with:
+        push_to_ghcr: true
+        image_name: matrixrtc-authorization-service
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        context_dir: authorization-service

@@ -17,6 +17,9 @@ The gateway:
 
 The upstream service and its signed LiveKit webhook remain cluster-internal.
 Only this gateway is exposed at the public MatrixRTC authorization URL.
+`authorization-service/` builds the exact reviewed upstream revision with the
+small ORISO `LIVEKIT_LOG_LEVEL=off` override required to prevent identifiers
+and OpenID material from entering container logs.
 
 ## Routes
 
@@ -63,8 +66,8 @@ account, room ID, token, or infrastructure secret is required.
 
 ## Deployment gates
 
-- Deploy a reviewed, immutable multi-architecture digest of the upstream
-  `element-hq/lk-jwt-service`.
+- Deploy a reviewed, immutable multi-architecture digest of the ORISO
+  authorization-service image built from the pinned upstream revision.
 - Configure LiveKit with `room.auto_create: false`.
 - Keep the upstream authorization service and its signed SFU webhook private.
 - Store every credential in Kubernetes Secrets and rotate all historical

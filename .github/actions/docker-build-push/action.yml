@@ -14,10 +14,17 @@ inputs:
     required: false
     type: string
     default: token-service
+  platforms:
+    required: false
+    type: string
+    default: linux/amd64,linux/arm64
 
 runs:
   using: 'composite'
   steps:
+  - name: Set up QEMU
+    uses: docker/setup-qemu-action@v4
+
   - name: Set up Docker Buildx
     uses: docker/setup-buildx-action@v4
 
@@ -44,6 +51,7 @@ runs:
     uses: docker/build-push-action@v7
     with:
       context: ${{ inputs.context_dir }}
+      platforms: ${{ inputs.platforms }}
       push: ${{ inputs.push_to_ghcr }}
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}

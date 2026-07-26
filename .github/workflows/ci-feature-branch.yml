@@ -22,7 +22,7 @@ jobs:
     - name: Validate token service
       uses: ./.github/actions/node-validate
       with:
-        node_version: '20'
+        node_version: '22'
 
     - name: Build policy gateway
       uses: ./.github/actions/docker-build-push

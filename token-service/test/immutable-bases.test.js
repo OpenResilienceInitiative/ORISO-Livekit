@@ -26,3 +26,37 @@ test('all gateway and issuer container bases are pinned by digest', () => {
 		);
 	}
 });
+
+test('release workflow publishes immutable multi-platform images with evidence', () => {
+	const buildAction = readFileSync(
+		resolve(__dirname, '../../.github/actions/docker-build-push/action.yml'),
+		'utf8'
+	);
+	const mainWorkflow = readFileSync(
+		resolve(__dirname, '../../.github/workflows/ci-main.yml'),
+		'utf8'
+	);
+
+	assert.match(buildAction, /linux\/amd64,linux\/arm64/);
+	assert.match(buildAction, /provenance: mode=max/);
+	assert.match(buildAction, /sbom: true/);
+	assert.match(buildAction, /value: \$\{\{ steps\.build\.outputs\.digest \}\}/);
+	assert.match(mainWorkflow, /id-token: write/);
+	assert.match(mainWorkflow, /attestations: write/);
+	assert.match(
+		mainWorkflow,
+		/aquasecurity\/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25/
+	);
+	assert.match(
+		mainWorkflow,
+		/actions\/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6/
+	);
+	assert.match(
+		mainWorkflow,
+		/image-ref: .*@\$\{\{ steps\..*\.outputs\.digest \}\}/
+	);
+	assert.equal(
+		(mainWorkflow.match(/subject-digest: \$\{\{ steps\./g) ?? []).length,
+		2
+	);
+});

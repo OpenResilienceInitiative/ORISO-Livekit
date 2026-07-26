@@ -1,118 +1,198 @@
 const express = require('express');
 const cors = require('cors');
-const { AccessToken } = require('livekit-server-sdk');
+const { readFileSync } = require('node:fs');
 
 const app = express();
-const PORT = 3010;
+const PORT = Number.parseInt(process.env.PORT || '3010', 10);
+const ALLOWED_ORIGINS = new Set(
+	(process.env.MATRIXRTC_ALLOWED_ORIGINS || '')
+		.split(',')
+		.map((origin) => origin.trim())
+		.filter(Boolean)
+);
+const MATRIX_SERVER_NAME = process.env.MATRIX_SERVER_NAME?.trim();
+const MATRIX_FEDERATION_BASE_URL =
+	process.env.MATRIX_FEDERATION_BASE_URL?.trim();
+const MATRIX_ADMIN_BASE_URL = process.env.MATRIX_ADMIN_BASE_URL?.trim();
+const MATRIX_ADMIN_TOKEN_FILE = process.env.MATRIX_ADMIN_TOKEN_FILE?.trim();
+const MATRIXRTC_UPSTREAM_URL = process.env.MATRIXRTC_UPSTREAM_URL?.trim();
+const UPSTREAM_TIMEOUT_MS = Number.parseInt(
+	process.env.MATRIXRTC_UPSTREAM_TIMEOUT_MS || '5000',
+	10
+);
 
-// LiveKit credentials
-const LIVEKIT_API_KEY = 'APIm7qGJ8kR3fN2pL5tX';
-const LIVEKIT_API_SECRET = 'secretW9vY4bH6nK8mP2qR7sT3xZ5A1B2C3D4E5F6G7H8';
-
-app.use(cors());
-app.use(express.json());
-
-// Health check
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', service: 'livekit-token-service' });
-});
-
-// Generate LiveKit token (GET with query params) - for direct calls
-app.get('/api/livekit/token', async (req, res) => {
-    try {
-        const { roomName, identity } = req.query;
-
-        if (!roomName || !identity) {
-            return res.status(400).json({ error: 'roomName and identity are required' });
-        }
-
-        console.log(`Generating token for user: ${identity}, room: ${roomName}`);
-
-        // Create access token
-        const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
-            identity: identity,
-            name: identity,
-        });
-
-        // Add grant for the room
-        at.addGrant({
-            room: roomName,
-            roomJoin: true,
-            canPublish: true,
-            canSubscribe: true,
-        });
-
-        const token = await at.toJwt();
-
-        console.log(`✅ Token generated for ${identity}: ${token.substring(0, 20)}...`);
-
-        res.json({ token });
-    } catch (error) {
-        console.error('Error generating token:', error);
-        res.status(500).json({ error: 'Failed to generate token', details: error.message });
-    }
-});
-
-// Shared handler for Element Call SFU JWT requests
-async function handleSfuRequest(req, res) {
-    try {
-        const { room, openid_token, device_id } = req.body;
-
-        if (!room || !openid_token) {
-            return res.status(400).json({ error: 'room and openid_token are required' });
-        }
-
-        console.log(`📞 Element Call SFU request - Room: ${room}, Device: ${device_id || 'unknown'}`);
-
-        // NOTE: For production you should validate the Matrix OpenID token with the homeserver.
-        // For now we trust the token and just use it to derive an identity.
-        const identity = device_id || `user_${Date.now()}`;
-
-        // Create LiveKit access token
-        const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
-            identity,
-            name: identity,
-        });
-
-        // Grant full room permissions
-        at.addGrant({
-            room,
-            roomJoin: true,
-            canPublish: true,
-            canSubscribe: true,
-        });
-
-        const jwt = await at.toJwt();
-
-        // WebSocket URL returned to Element Call for /rtc/validate — must match
-        // the deployed LiveKit ingress host (e.g. wss://livekit.oriso.org).
-        const livekitUrl = process.env.LIVEKIT_URL?.trim();
-        if (!livekitUrl) {
-            console.error('❌ LIVEKIT_URL env is not set on token-service');
-            return res.status(500).json({
-                error: 'LIVEKIT_URL not configured on token service',
-            });
-        }
-
-        console.log(`✅ SFU token generated for room ${room}, identity: ${identity}, url: ${livekitUrl}`);
-
-        // Element Call expects: { url, jwt }
-        res.json({ url: livekitUrl, jwt });
-    } catch (error) {
-        console.error('❌ Error generating SFU token:', error);
-        res.status(500).json({ error: 'Failed to generate SFU token', details: error.message });
-    }
+if (ALLOWED_ORIGINS.size === 0) {
+	throw new Error('MATRIXRTC_ALLOWED_ORIGINS must be configured');
+}
+if (
+	!MATRIX_SERVER_NAME ||
+	!MATRIX_FEDERATION_BASE_URL ||
+	!MATRIX_ADMIN_BASE_URL ||
+	!MATRIX_ADMIN_TOKEN_FILE ||
+	!MATRIXRTC_UPSTREAM_URL
+) {
+	throw new Error('Matrix authorization configuration is incomplete');
 }
 
-// Legacy SFU endpoint used by Element Call via /api/livekit/token base URL
-app.post('/api/livekit/token/sfu/get', handleSfuRequest);
+const MATRIX_ADMIN_TOKEN = readFileSync(
+	MATRIX_ADMIN_TOKEN_FILE,
+	'utf8'
+).trim();
+if (!MATRIX_ADMIN_TOKEN) {
+	throw new Error('Matrix admin token file is empty');
+}
 
-// MSC4195-compliant MatrixRTC Authorization Service endpoint used via /livekit/jwt base URL
-app.post('/livekit/jwt/sfu/get', handleSfuRequest);
+app.use(
+	cors({
+		origin(origin, callback) {
+			callback(null, !!origin && ALLOWED_ORIGINS.has(origin));
+		}
+	})
+);
+app.use(express.json({ limit: '16kb', strict: true }));
 
-app.listen(PORT, () => {
-    console.log(`🚀 LiveKit Token Service running on port ${PORT}`);
-    console.log(`   API Key: ${LIVEKIT_API_KEY}`);
-    console.log(`   Endpoint: http://localhost:${PORT}/api/livekit/token`);
+app.use((req, res, next) => {
+	if (
+		req.path.startsWith('/livekit/jwt/') &&
+		!ALLOWED_ORIGINS.has(req.get('origin'))
+	) {
+		return res.status(403).json({ error: 'forbidden' });
+	}
+	return next();
 });
 
+app.use('/livekit/jwt', async (req, res, next) => {
+	const room = req.body?.room || req.body?.room_id;
+	const openIdToken = req.body?.openid_token;
+	const roomServerName =
+		typeof room === 'string' && room.startsWith('!')
+			? room.slice(room.indexOf(':') + 1)
+			: undefined;
+	if (
+		typeof room !== 'string' ||
+		roomServerName !== MATRIX_SERVER_NAME ||
+		typeof openIdToken?.access_token !== 'string' ||
+		openIdToken.matrix_server_name !== MATRIX_SERVER_NAME
+	) {
+		return res.status(403).json({ error: 'forbidden' });
+	}
+
+	const userInfoUrl = new URL(
+		'/_matrix/federation/v1/openid/userinfo',
+		MATRIX_FEDERATION_BASE_URL
+	);
+	userInfoUrl.searchParams.set('access_token', openIdToken.access_token);
+
+	let userInfoResponse;
+	try {
+		userInfoResponse = await fetch(userInfoUrl, {
+			signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
+		});
+	} catch {
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+	if (!userInfoResponse.ok) {
+		return res.status(401).json({ error: 'unauthorized' });
+	}
+
+	let userInfo;
+	try {
+		userInfo = await userInfoResponse.json();
+	} catch {
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+	const matrixUserId = userInfo?.sub;
+	if (
+		typeof matrixUserId !== 'string' ||
+		!matrixUserId.endsWith(`:${MATRIX_SERVER_NAME}`) ||
+		(req.body?.member?.claimed_user_id &&
+			req.body.member.claimed_user_id !== matrixUserId)
+	) {
+		return res.status(401).json({ error: 'unauthorized' });
+	}
+
+	const membersUrl = new URL(
+		`/_synapse/admin/v1/rooms/${encodeURIComponent(room)}/members`,
+		MATRIX_ADMIN_BASE_URL
+	);
+	let membersResponse;
+	try {
+		membersResponse = await fetch(membersUrl, {
+			headers: {
+				authorization: `Bearer ${MATRIX_ADMIN_TOKEN}`
+			},
+			signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
+		});
+	} catch {
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+	if (!membersResponse.ok) {
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+
+	let membership;
+	try {
+		membership = await membersResponse.json();
+	} catch {
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+	if (
+		!Array.isArray(membership?.members) ||
+		!membership.members.includes(matrixUserId)
+	) {
+		return res.status(403).json({ error: 'forbidden' });
+	}
+
+	return next();
+});
+
+app.get('/health', (_req, res) => {
+	res.json({ status: 'ok', service: 'matrixrtc-auth-policy-gateway' });
+});
+
+async function proxyToAuthorizationService(req, res, upstreamPath) {
+	let upstreamResponse;
+	try {
+		upstreamResponse = await fetch(
+			new URL(upstreamPath, MATRIXRTC_UPSTREAM_URL),
+			{
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(req.body),
+				signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
+			}
+		);
+	} catch {
+		return res.status(502).json({ error: 'authorization service unavailable' });
+	}
+
+	const responseBody = await upstreamResponse.text();
+	res.status(upstreamResponse.status);
+	const contentType = upstreamResponse.headers.get('content-type');
+	if (contentType) res.type(contentType);
+	return res.send(responseBody);
+}
+
+app.post('/livekit/jwt/sfu/get', (req, res) =>
+	proxyToAuthorizationService(req, res, '/sfu/get')
+);
+app.post('/livekit/jwt/get_token', (req, res) =>
+	proxyToAuthorizationService(req, res, '/get_token')
+);
+app.post('/livekit/jwt/delegate_delayed_leave', (req, res) =>
+	proxyToAuthorizationService(req, res, '/delegate_delayed_leave')
+);
+
+app.use((error, _req, res, next) => {
+	if (
+		error?.type === 'entity.too.large' ||
+		(error instanceof SyntaxError && error.status === 400)
+	) {
+		return res.status(error.status || 400).json({ error: 'invalid request' });
+	}
+	return next(error);
+});
+
+app.listen(PORT, () => {
+	console.log(`MatrixRTC authorization policy gateway listening on port ${PORT}`);
+});

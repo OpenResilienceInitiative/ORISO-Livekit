@@ -32,6 +32,6 @@ jobs:
       uses: ./.github/actions/docker-build-push
       with:
         push_to_ghcr: true
-        image_name: livekit-token-service
+        image_name: matrixrtc-auth-policy-gateway
         github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: token-service

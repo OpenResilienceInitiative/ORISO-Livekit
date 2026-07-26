@@ -1,71 +1,75 @@
-# ORISO LiveKit Deployment
+# ORISO MatrixRTC authorization policy gateway
 
-LiveKit server for group video calls in the ORISO platform.
+This repository contains the narrow ORISO policy layer in front of the
+upstream Element MatrixRTC authorization service. It does not create LiveKit
+JWTs and it does not hold LiveKit API credentials.
 
-## Architecture
+The gateway:
 
-- **Matrix Server**: Handles users, authentication, rooms, chat, 1-on-1 calls
-- **LiveKit Server**: Handles group video calls (3+ participants)
+- accepts requests only from explicitly configured first-party Element Call
+  origins;
+- validates the Matrix OpenID token with the configured homeserver;
+- derives the Matrix user ID from that validated token;
+- allows only rooms on the configured Matrix homeserver;
+- verifies that the user is currently joined to the requested room through
+  Synapse's authenticated room-members endpoint; and
+- forwards approved requests to the internal upstream authorization service.
 
-## Deployment
+The upstream service and its signed LiveKit webhook remain cluster-internal.
+Only this gateway is exposed at the public MatrixRTC authorization URL.
 
-```bash
-# Deploy LiveKit
-kubectl apply -f k8s-livekit.yaml
+## Routes
 
-# Check status
-kubectl get pods -n caritas -l app=livekit
-kubectl logs -n caritas -l app=livekit
+The public base URL is `/livekit/jwt`.
 
-# Check service
-kubectl get svc -n caritas livekit
-kubectl get ingress -n caritas livekit-ingress
+| Public route | Internal upstream route |
+| --- | --- |
+| `POST /livekit/jwt/sfu/get` | `POST /sfu/get` |
+| `POST /livekit/jwt/get_token` | `POST /get_token` |
+| `POST /livekit/jwt/delegate_delayed_leave` | `POST /delegate_delayed_leave` |
+
+`GET /health` is the unauthenticated health probe. The former
+`GET /api/livekit/token` and custom JWT issuer are intentionally absent.
+
+## Required configuration
+
+| Environment variable | Purpose |
+| --- | --- |
+| `MATRIXRTC_ALLOWED_ORIGINS` | Comma-separated exact HTTPS origins |
+| `MATRIX_SERVER_NAME` | Exact local Matrix server name |
+| `MATRIX_FEDERATION_BASE_URL` | Internal or trusted homeserver base URL used for OpenID validation |
+| `MATRIX_ADMIN_BASE_URL` | Internal Synapse base URL used for room membership checks |
+| `MATRIX_ADMIN_TOKEN_FILE` | Mounted file containing a narrowly managed Synapse admin token |
+| `MATRIXRTC_UPSTREAM_URL` | Cluster-internal upstream authorization-service URL |
+
+Optional limits are `PORT` and `MATRIXRTC_UPSTREAM_TIMEOUT_MS`. JSON request
+bodies are limited to 16 KiB. Per-client request limiting is enforced at the
+ingress, where the original client address is authoritative.
+
+The admin token must be mounted from a Kubernetes Secret. It must never be
+placed in a ConfigMap, image, repository, log, URL, or client response.
+
+## Local validation
+
+```sh
+cd token-service
+npm ci
+npm test
+docker build -t matrixrtc-auth-policy-gateway:test .
 ```
 
-## Configuration
+The test suite uses only local fake Synapse and upstream servers. No ORISO
+account, room ID, token, or infrastructure secret is required.
 
-- **URL**: https://livekit.oriso.site
-- **API Key**: APIm7qGJ8kR3fN2pL5tX
-- **API Secret**: secretW9vY4bH6nK8mP2qR7sT3xZ5
-- **Port**: 7880 (HTTP)
-- **RTC Ports**: 50000-50100 (UDP)
+## Deployment gates
 
-## Testing
-
-```bash
-# Test LiveKit is running
-curl https://livekit.oriso.site
-
-# Check health
-kubectl exec -n caritas -it $(kubectl get pod -n caritas -l app=livekit -o jsonpath='{.items[0].metadata.name}') -- wget -O- http://localhost:7880
-```
-
-## Integration with Frontend
-
-The frontend will use LiveKit for group calls:
-- Install `livekit-client` npm package
-- Connect to `wss://livekit.oriso.site`
-- Use API key for authentication
-- Matrix handles signaling, LiveKit handles media
-
-## Troubleshooting
-
-```bash
-# View logs
-kubectl logs -n caritas -l app=livekit -f
-
-# Restart LiveKit
-kubectl rollout restart deployment/livekit -n caritas
-
-# Delete and redeploy
-kubectl delete -f k8s-livekit.yaml
-kubectl apply -f k8s-livekit.yaml
-```
-
-## Security
-
-- API keys are stored in ConfigMap (should move to Secret in production)
-- HTTPS enabled via cert-manager
-- Only accessible via ingress (ClusterIP service)
-
-
+- Deploy a reviewed, immutable multi-architecture digest of the upstream
+  `element-hq/lk-jwt-service`.
+- Configure LiveKit with `room.auto_create: false`.
+- Keep the upstream authorization service and its signed SFU webhook private.
+- Store every credential in Kubernetes Secrets and rotate all historical
+  credentials that were previously committed to this repository.
+- Pin the gateway, upstream authorization service, and LiveKit images by
+  immutable digest.
+- Run negative authorization tests and a two-browser MatrixRTC call on PreDev
+  before enabling Element Call widget mode by default.

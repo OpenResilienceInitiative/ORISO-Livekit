@@ -7,6 +7,10 @@ on:
     - dev
     - pre-dev
 
+env:
+  REGISTRY: ghcr.io
+  ORG: openresilienceinitiative
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,4 +22,20 @@ jobs:
     - name: Validate token service
       uses: ./.github/actions/node-validate
       with:
-        node_version: '20'
+        node_version: '22'
+
+    - name: Build policy gateway
+      uses: ./.github/actions/docker-build-push
+      with:
+        push_to_ghcr: false
+        image_name: matrixrtc-auth-policy-gateway
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        context_dir: token-service
+
+    - name: Build privacy-safe authorization service
+      uses: ./.github/actions/docker-build-push
+      with:
+        push_to_ghcr: false
+        image_name: matrixrtc-authorization-service
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        context_dir: authorization-service

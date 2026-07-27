@@ -1,0 +1,37 @@
+ARG UPSTREAM_REVISION=a375b130a43fade115e0e71ad159f11265107d89
+ARG UPSTREAM_ARCHIVE_SHA256=72f36f4411a2ac0412aa549eb421abde25e4ad770be7834385b20a57f0954967
+
+FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40 AS source
+ARG UPSTREAM_REVISION
+ARG UPSTREAM_ARCHIVE_SHA256
+WORKDIR /download
+RUN wget -qO source.tar.gz "https://github.com/element-hq/lk-jwt-service/archive/${UPSTREAM_REVISION}.tar.gz" \
+    && echo "${UPSTREAM_ARCHIVE_SHA256}  source.tar.gz" | sha256sum -c - \
+    && mkdir /src \
+    && tar -xzf source.tar.gz --strip-components=1 -C /src
+
+FROM --platform=${BUILDPLATFORM} golang:1.26.4-alpine@sha256:3ad57304ad93bbec8548a0437ad9e06a455660655d9af011d58b993f6f615648 AS builder
+WORKDIR /src
+COPY --from=source /src /src
+COPY overrides/main.go ./main.go
+COPY overrides/logging_test.go ./logging_test.go
+RUN go test ./...
+
+ARG TARGETOS TARGETARCH
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o /out/lk-jwt-service .
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o /out/lk-jwt-service-healthcheck ./healthcheck
+RUN echo 'hosts: files dns' > /out/nsswitch.conf
+
+FROM scratch
+ARG UPSTREAM_REVISION
+LABEL org.opencontainers.image.source="https://github.com/OpenResilienceInitiative/ORISO-Livekit" \
+      org.opencontainers.image.description="Element MatrixRTC authorization service with ORISO no-identifiers logging mode" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.upstream-revision="${UPSTREAM_REVISION}"
+COPY --from=builder /out/lk-jwt-service /lk-jwt-service
+COPY --from=builder /out/lk-jwt-service-healthcheck /lk-jwt-service-healthcheck
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /out/nsswitch.conf /etc/nsswitch.conf
+EXPOSE 8080
+CMD ["/lk-jwt-service"]
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD ["/lk-jwt-service-healthcheck"]

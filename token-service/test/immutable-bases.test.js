@@ -27,6 +27,22 @@ test('all gateway and issuer container bases are pinned by digest', () => {
 	}
 });
 
+test('authorization service build uses the fixed Go and gRPC security floors', () => {
+	const dockerfile = readFileSync(
+		resolve(__dirname, '../../authorization-service/Dockerfile'),
+		'utf8'
+	);
+
+	assert.match(
+		dockerfile,
+		/golang:1\.26\.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2/
+	);
+	assert.match(
+		dockerfile,
+		/go mod edit -require=google\.golang\.org\/grpc@v1\.82\.1/
+	);
+});
+
 test('release workflow publishes immutable multi-platform images with evidence', () => {
 	const buildAction = readFileSync(
 		resolve(__dirname, '../../.github/actions/docker-build-push/action.yml'),

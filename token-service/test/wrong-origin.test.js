@@ -12,7 +12,7 @@ const UPSTREAM_URL = 'http://127.0.0.1:3030';
 const MATRIX_SERVER_NAME = 'matrix.oriso.org';
 const MATRIX_USER_ID = `@user:${MATRIX_SERVER_NAME}`;
 const ALLOWED_ORIGIN = 'https://call.oriso.org';
-const ADMIN_TOKEN = 'test-admin-token';
+const MEMBERSHIP_TOKEN = 'test-membership-token';
 
 let child;
 let synapse;
@@ -45,6 +45,11 @@ before(async () => {
 	synapse = createServer((request, response) => {
 		const url = new URL(request.url, SYNAPSE_URL);
 		if (url.pathname === '/_matrix/federation/v1/openid/userinfo') {
+			if (url.searchParams.get('access_token') === 'malformed-json') {
+				response.writeHead(200, { 'content-type': 'application/json' });
+				response.end('{');
+				return;
+			}
 			if (url.searchParams.get('access_token') !== 'valid-openid-token') {
 				response.writeHead(401, { 'content-type': 'application/json' });
 				response.end(JSON.stringify({ errcode: 'M_UNAUTHORIZED' }));
@@ -55,8 +60,34 @@ before(async () => {
 			return;
 		}
 
-		if (url.pathname.startsWith('/_synapse/admin/v1/rooms/')) {
-			if (request.headers.authorization !== `Bearer ${ADMIN_TOKEN}`) {
+		if (
+			request.method === 'POST' &&
+			url.pathname.startsWith('/_matrix/client/v3/join/')
+		) {
+			if (request.headers.authorization !== `Bearer ${MEMBERSHIP_TOKEN}`) {
+				response.writeHead(401, { 'content-type': 'application/json' });
+				response.end(JSON.stringify({ errcode: 'M_UNAUTHORIZED' }));
+				return;
+			}
+			if (
+				url.pathname.includes(
+					encodeURIComponent(`!not-invited:${MATRIX_SERVER_NAME}`)
+				)
+			) {
+				response.writeHead(403, { 'content-type': 'application/json' });
+				response.end(JSON.stringify({ errcode: 'M_FORBIDDEN' }));
+				return;
+			}
+			response.writeHead(200, { 'content-type': 'application/json' });
+			response.end(JSON.stringify({ room_id: url.pathname.split('/').at(-1) }));
+			return;
+		}
+
+		if (
+			url.pathname.startsWith('/_matrix/client/v3/rooms/') &&
+			url.pathname.endsWith('/joined_members')
+		) {
+			if (request.headers.authorization !== `Bearer ${MEMBERSHIP_TOKEN}`) {
 				response.writeHead(401, { 'content-type': 'application/json' });
 				response.end(JSON.stringify({ errcode: 'M_UNAUTHORIZED' }));
 				return;
@@ -70,13 +101,34 @@ before(async () => {
 				response.end(JSON.stringify({ errcode: 'M_UNKNOWN' }));
 				return;
 			}
-			const members = url.pathname.includes(
+			if (
+				url.pathname.includes(
+					encodeURIComponent(`!malformed:${MATRIX_SERVER_NAME}`)
+				)
+			) {
+				response.writeHead(200, { 'content-type': 'application/json' });
+				response.end('{');
+				return;
+			}
+			if (
+				url.pathname.includes(
+					encodeURIComponent(`!oversized:${MATRIX_SERVER_NAME}`)
+				)
+			) {
+				response.writeHead(200, {
+					'content-type': 'application/json',
+					'content-length': '300000'
+				});
+				response.end('{}');
+				return;
+			}
+			const joined = url.pathname.includes(
 				encodeURIComponent(`!allowed:${MATRIX_SERVER_NAME}`)
 			)
-				? [MATRIX_USER_ID]
-				: [];
+				? { [MATRIX_USER_ID]: { display_name: 'Test user' } }
+				: {};
 			response.writeHead(200, { 'content-type': 'application/json' });
-			response.end(JSON.stringify({ members, total: members.length }));
+			response.end(JSON.stringify({ joined }));
 			return;
 		}
 
@@ -104,19 +156,20 @@ before(async () => {
 	]);
 
 	tempDirectory = mkdtempSync(join(tmpdir(), 'matrixrtc-policy-'));
-	const adminTokenFile = join(tempDirectory, 'admin-token');
-	writeFileSync(adminTokenFile, ADMIN_TOKEN, { mode: 0o600 });
+	const membershipTokenFile = join(tempDirectory, 'membership-token');
+	writeFileSync(membershipTokenFile, MEMBERSHIP_TOKEN, { mode: 0o600 });
 
 	child = spawn(process.execPath, ['server.js'], {
 		cwd: __dirname.replace(/\/test$/, ''),
 		env: {
 			...process.env,
+			NODE_ENV: 'test',
 			PORT: '3010',
 			MATRIXRTC_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
 			MATRIX_SERVER_NAME,
 			MATRIX_FEDERATION_BASE_URL: SYNAPSE_URL,
-			MATRIX_ADMIN_BASE_URL: SYNAPSE_URL,
-			MATRIX_ADMIN_TOKEN_FILE: adminTokenFile,
+			MATRIX_CLIENT_BASE_URL: SYNAPSE_URL,
+			MATRIX_MEMBERSHIP_TOKEN_FILE: membershipTokenFile,
 			MATRIXRTC_UPSTREAM_URL: UPSTREAM_URL,
 			LIVEKIT_URL: 'wss://livekit.invalid'
 		},
@@ -171,6 +224,25 @@ test('rejects an invalid or expired Matrix OpenID token', async () => {
 	assert.deepEqual(await response.json(), { error: 'unauthorized' });
 });
 
+test('fails closed on malformed Matrix OpenID authority JSON', async () => {
+	const response = await fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {
+		method: 'POST',
+		headers: {
+			'content-type': 'application/json',
+			origin: ALLOWED_ORIGIN
+		},
+		body: JSON.stringify({
+			room: `!allowed:${MATRIX_SERVER_NAME}`,
+			openid_token: {
+				access_token: 'malformed-json',
+				matrix_server_name: MATRIX_SERVER_NAME
+			}
+		})
+	});
+
+	assert.equal(response.status, 503);
+});
+
 test('rejects a room on another Matrix homeserver', async () => {
 	const response = await fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {
 		method: 'POST',
@@ -180,6 +252,25 @@ test('rejects a room on another Matrix homeserver', async () => {
 		},
 		body: JSON.stringify({
 			room: '!allowed:attacker.example',
+			openid_token: {
+				access_token: 'valid-openid-token',
+				matrix_server_name: MATRIX_SERVER_NAME
+			}
+		})
+	});
+
+	assert.equal(response.status, 403);
+});
+
+test('rejects a malformed local-looking Matrix room ID', async () => {
+	const response = await fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {
+		method: 'POST',
+		headers: {
+			'content-type': 'application/json',
+			origin: ALLOWED_ORIGIN
+		},
+		body: JSON.stringify({
+			room: `!bad/room:${MATRIX_SERVER_NAME}`,
 			openid_token: {
 				access_token: 'valid-openid-token',
 				matrix_server_name: MATRIX_SERVER_NAME
@@ -234,6 +325,27 @@ test('fails closed when the room-membership authority is unavailable', async () 
 	});
 });
 
+for (const roomLocalpart of ['malformed', 'oversized']) {
+	test(`fails closed on ${roomLocalpart} joined_members response`, async () => {
+		const response = await fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				origin: ALLOWED_ORIGIN
+			},
+			body: JSON.stringify({
+				room: `!${roomLocalpart}:${MATRIX_SERVER_NAME}`,
+				openid_token: {
+					access_token: 'valid-openid-token',
+					matrix_server_name: MATRIX_SERVER_NAME
+				}
+			})
+		});
+
+		assert.equal(response.status, 503);
+	});
+}
+
 test('maps current MatrixRTC authorization routes to the internal service', async () => {
 	const requestBody = {
 		room_id: `!allowed:${MATRIX_SERVER_NAME}`,
@@ -246,7 +358,9 @@ test('maps current MatrixRTC authorization routes to the internal service', asyn
 			id: 'member-1',
 			claimed_user_id: MATRIX_USER_ID,
 			claimed_device_id: 'ORISO_WEB_TEST'
-		}
+		},
+		permissions: { roomAdmin: true },
+		identity: 'attacker-selected-identity'
 	};
 
 	for (const path of ['get_token', 'delegate_delayed_leave']) {
@@ -265,7 +379,16 @@ test('maps current MatrixRTC authorization routes to the internal service', asyn
 		assert.deepEqual(upstreamRequests.at(-1), {
 			method: 'POST',
 			url: `/${path}`,
-			body: requestBody
+			body: {
+				room_id: requestBody.room_id,
+				slot_id: requestBody.slot_id,
+				openid_token: {
+					access_token: requestBody.openid_token.access_token,
+					matrix_server_name:
+						requestBody.openid_token.matrix_server_name
+				},
+				member: requestBody.member
+			}
 		});
 	}
 });
@@ -304,11 +427,19 @@ test('proxies an authorized joined member to the canonical JWT service', async (
 	assert.deepEqual(upstreamRequests.at(-1), {
 		method: 'POST',
 		url: '/sfu/get',
-		body: requestBody
+		body: {
+			room: requestBody.room,
+			openid_token: {
+				access_token: requestBody.openid_token.access_token,
+				matrix_server_name:
+					requestBody.openid_token.matrix_server_name
+			},
+			device_id: requestBody.device_id
+		}
 	});
 });
 
-test('rejects a valid Matrix identity that is not joined to the requested call room', async () => {
+test('rejects a valid identity absent from joined_members, including leave or ban states', async () => {
 	const response = await fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {
 		method: 'POST',
 		headers: {
@@ -326,4 +457,24 @@ test('rejects a valid Matrix identity that is not joined to the requested call r
 	});
 
 	assert.equal(response.status, 403);
+});
+
+test('rejects a call room that did not invite the scoped membership reader', async () => {
+	const response = await fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {
+		method: 'POST',
+		headers: {
+			'content-type': 'application/json',
+			origin: ALLOWED_ORIGIN
+		},
+		body: JSON.stringify({
+			room: `!not-invited:${MATRIX_SERVER_NAME}`,
+			openid_token: {
+				access_token: 'valid-openid-token',
+				matrix_server_name: MATRIX_SERVER_NAME
+			}
+		})
+	});
+
+	assert.equal(response.status, 403);
+	assert.deepEqual(await response.json(), { error: 'forbidden' });
 });

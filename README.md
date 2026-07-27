@@ -41,16 +41,27 @@ The public base URL is `/livekit/jwt`.
 | `MATRIXRTC_ALLOWED_ORIGINS` | Comma-separated exact HTTPS origins |
 | `MATRIX_SERVER_NAME` | Exact local Matrix server name |
 | `MATRIX_FEDERATION_BASE_URL` | Internal or trusted homeserver base URL used for OpenID validation |
-| `MATRIX_ADMIN_BASE_URL` | Internal Synapse base URL used for room membership checks |
-| `MATRIX_ADMIN_TOKEN_FILE` | Mounted file containing a narrowly managed Synapse admin token |
+| `MATRIX_CLIENT_BASE_URL` | Trusted HTTPS homeserver client API used for `joined_members` checks |
+| `MATRIX_MEMBERSHIP_TOKEN_FILE` | Mounted file containing the dedicated non-admin membership-reader token |
 | `MATRIXRTC_UPSTREAM_URL` | Cluster-internal upstream authorization-service URL |
 
-Optional limits are `PORT` and `MATRIXRTC_UPSTREAM_TIMEOUT_MS`. JSON request
-bodies are limited to 16 KiB. Per-client request limiting is enforced at the
-ingress, where the original client address is authoritative.
+Optional limits are `PORT`, `MATRIXRTC_REQUEST_TIMEOUT_MS`,
+`MATRIXRTC_MAX_AUTHORITY_RESPONSE_BYTES`,
+`MATRIXRTC_RATE_LIMIT_WINDOW_MS`, and
+`MATRIXRTC_RATE_LIMIT_MAX_REQUESTS`. JSON request bodies are limited to 16 KiB,
+authority responses default to 256 KiB, and the complete OpenID → membership →
+JWT chain has one shared deadline. The gateway has an in-process rate-limit as
+a fail-safe; ingress limiting remains the first line of defence because it sees
+the authoritative client address.
 
-The admin token must be mounted from a Kubernetes Secret. It must never be
-placed in a ConfigMap, image, repository, log, URL, or client response.
+The membership-reader credential must not be a Synapse server-admin token. Use
+a dedicated service identity that ORISO Frontend invites to each newly created
+call room. The gateway accepts that invitation immediately before reading
+`joined_members`, so the credential cannot inspect rooms it was not invited to.
+Mount it from a Kubernetes Secret; never place it in a ConfigMap, image,
+repository, log, URL, or client response. Kicked, left, invited, and banned
+users are absent from `joined_members` and therefore cannot receive media
+credentials.
 
 ## Local validation
 

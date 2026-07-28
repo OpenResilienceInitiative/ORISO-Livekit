@@ -10,6 +10,8 @@ const MATRIX_CLIENT_BASE_URL = process.env.MATRIX_CLIENT_BASE_URL?.trim();
 const MATRIX_MEMBERSHIP_TOKEN_FILE =
 	process.env.MATRIX_MEMBERSHIP_TOKEN_FILE?.trim();
 const MATRIXRTC_UPSTREAM_URL = process.env.MATRIXRTC_UPSTREAM_URL?.trim();
+const CONFIGURED_UPSTREAM_MATRIX_SERVER_NAME =
+	process.env.MATRIXRTC_UPSTREAM_MATRIX_SERVER_NAME?.trim();
 const REQUEST_TIMEOUT_MS = Number.parseInt(
 	process.env.MATRIXRTC_REQUEST_TIMEOUT_MS || '8000',
 	10
@@ -67,6 +69,17 @@ if (
 ) {
 	throw new Error('Matrix authorization configuration is incomplete');
 }
+const UPSTREAM_MATRIX_SERVER_NAME =
+	CONFIGURED_UPSTREAM_MATRIX_SERVER_NAME || MATRIX_SERVER_NAME;
+if (
+	!/^(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\])(?::[0-9]{1,5})?$/.test(
+		UPSTREAM_MATRIX_SERVER_NAME
+	)
+) {
+	throw new Error(
+		'MATRIXRTC_UPSTREAM_MATRIX_SERVER_NAME must be a Matrix server authority'
+	);
+}
 
 const FEDERATION_BASE_URL = requireSecureMatrixUrl(
 	MATRIX_FEDERATION_BASE_URL,
@@ -122,7 +135,7 @@ const readJsonLimited = async (response) =>
 const sanitizeOpenIdToken = (token) => ({
 	access_token: token.access_token,
 	token_type: token.token_type,
-	matrix_server_name: token.matrix_server_name,
+	matrix_server_name: UPSTREAM_MATRIX_SERVER_NAME,
 	expires_in: token.expires_in
 });
 

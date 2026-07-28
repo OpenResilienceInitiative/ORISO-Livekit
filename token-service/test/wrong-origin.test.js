@@ -10,6 +10,7 @@ const SERVICE_URL = 'http://127.0.0.1:3010';
 const SYNAPSE_URL = 'http://127.0.0.1:3020';
 const UPSTREAM_URL = 'http://127.0.0.1:3030';
 const MATRIX_SERVER_NAME = 'matrix.oriso.org';
+const UPSTREAM_MATRIX_SERVER_NAME = 'matrix.oriso.org:443';
 const MATRIX_USER_ID = `@user:${MATRIX_SERVER_NAME}`;
 const ALLOWED_ORIGIN = 'https://call.oriso.org';
 const MEMBERSHIP_TOKEN = 'test-membership-token';
@@ -171,6 +172,7 @@ before(async () => {
 			MATRIX_CLIENT_BASE_URL: SYNAPSE_URL,
 			MATRIX_MEMBERSHIP_TOKEN_FILE: membershipTokenFile,
 			MATRIXRTC_UPSTREAM_URL: UPSTREAM_URL,
+			MATRIXRTC_UPSTREAM_MATRIX_SERVER_NAME: UPSTREAM_MATRIX_SERVER_NAME,
 			LIVEKIT_URL: 'wss://livekit.invalid'
 		},
 		stdio: 'ignore'
@@ -384,8 +386,7 @@ test('maps current MatrixRTC authorization routes to the internal service', asyn
 				slot_id: requestBody.slot_id,
 				openid_token: {
 					access_token: requestBody.openid_token.access_token,
-					matrix_server_name:
-						requestBody.openid_token.matrix_server_name
+					matrix_server_name: UPSTREAM_MATRIX_SERVER_NAME
 				},
 				member: requestBody.member
 			}
@@ -431,8 +432,7 @@ test('proxies an authorized joined member to the canonical JWT service', async (
 			room: requestBody.room,
 			openid_token: {
 				access_token: requestBody.openid_token.access_token,
-				matrix_server_name:
-					requestBody.openid_token.matrix_server_name
+				matrix_server_name: UPSTREAM_MATRIX_SERVER_NAME
 			},
 			device_id: requestBody.device_id
 		}

@@ -34,6 +34,7 @@ COPY --from=builder /out/lk-jwt-service /lk-jwt-service
 COPY --from=builder /out/lk-jwt-service-healthcheck /lk-jwt-service-healthcheck
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /out/nsswitch.conf /etc/nsswitch.conf
+USER 65532:65532
 EXPOSE 8080
 CMD ["/lk-jwt-service"]
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD ["/lk-jwt-service-healthcheck"]

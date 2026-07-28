@@ -43,6 +43,20 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 	);
 });
 
+test('gateway and authorization images declare verifiable numeric non-root users', () => {
+	const gatewayDockerfile = readFileSync(
+		resolve(__dirname, '../Dockerfile'),
+		'utf8'
+	);
+	const authorizationDockerfile = readFileSync(
+		resolve(__dirname, '../../authorization-service/Dockerfile'),
+		'utf8'
+	);
+
+	assert.match(gatewayDockerfile, /^USER 1000:1000$/m);
+	assert.match(authorizationDockerfile, /^USER 65532:65532$/m);
+});
+
 test('release workflow publishes immutable multi-platform images with evidence', () => {
 	const buildAction = readFileSync(
 		resolve(__dirname, '../../.github/actions/docker-build-push/action.yml'),

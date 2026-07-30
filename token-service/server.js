@@ -252,6 +252,12 @@ app.use('/livekit/jwt', async (req, res, next) => {
 	}
 	if (!userInfoResponse.ok) {
 		clearTimeout(deadlineTimer);
+		console.warn(
+			JSON.stringify({
+				event: 'matrixrtc_authorization_denied',
+				reason: 'openid_authority_rejected'
+			})
+		);
 		return res.status(401).json({ error: 'unauthorized' });
 	}
 
@@ -270,6 +276,12 @@ app.use('/livekit/jwt', async (req, res, next) => {
 			req.body.member.claimed_user_id !== matrixUserId)
 	) {
 		clearTimeout(deadlineTimer);
+		console.warn(
+			JSON.stringify({
+				event: 'matrixrtc_authorization_denied',
+				reason: 'openid_subject_scope_mismatch'
+			})
+		);
 		return res.status(401).json({ error: 'unauthorized' });
 	}
 

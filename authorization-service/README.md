@@ -10,6 +10,12 @@ records and standard-library `log` records. This is required because the
 pinned upstream revision includes Matrix users, rooms, member structures and
 occasionally OpenID data in error-level attributes.
 
+The image build may also raise a vulnerable transitive dependency to an
+explicit fixed version while keeping the upstream source revision immutable.
+The Dockerfile currently requires `google.golang.org/grpc` 1.82.1 and builds
+with Go 1.26.5. Both floors are enforced by a repository test and the final
+binary is scanned after compilation.
+
 The Helm chart must run this ORISO image with `LIVEKIT_LOG_LEVEL=off`. Health
 and readiness probes remain the operational signal until a privacy-safe metrics
 surface is available.

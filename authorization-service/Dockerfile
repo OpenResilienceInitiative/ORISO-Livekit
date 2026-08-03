@@ -11,9 +11,13 @@ RUN wget -qO source.tar.gz "https://github.com/element-hq/lk-jwt-service/archive
     && tar -xzf source.tar.gz --strip-components=1 -C /src
 
 FROM --platform=${BUILDPLATFORM} golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS builder
+RUN apk add --no-cache patch
 WORKDIR /src
 COPY --from=source /src /src
+COPY overrides/call_policy.patch /tmp/call_policy.patch
+RUN patch -p1 < /tmp/call_policy.patch
 COPY overrides/main.go ./main.go
+COPY overrides/call_policy_test.go ./call_policy_test.go
 COPY overrides/logging_test.go ./logging_test.go
 COPY overrides/federation_url_override.go ./federation_url_override.go
 COPY overrides/federation_url_override_test.go ./federation_url_override_test.go

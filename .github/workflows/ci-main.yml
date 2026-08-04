@@ -19,12 +19,13 @@ jobs:
       contents: read
       id-token: write
       attestations: write
-      artifact-metadata: write
       packages: write
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v6
+      with:
+        persist-credentials: false
 
     - name: Validate token service
       uses: ./.github/actions/node-validate
@@ -83,7 +84,7 @@ jobs:
         subject-digest: ${{ steps.issuer_image.outputs.digest }}
         push-to-registry: true
 
-    - name: Record immutable release digests
+    - name: Record published digests
       run: |
         echo '${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-auth-policy-gateway@${{ steps.policy_image.outputs.digest }}' >> "$GITHUB_STEP_SUMMARY"
         echo '${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-authorization-service@${{ steps.issuer_image.outputs.digest }}' >> "$GITHUB_STEP_SUMMARY"

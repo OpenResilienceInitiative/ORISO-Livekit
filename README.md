@@ -12,7 +12,12 @@ The gateway:
 - derives the Matrix user ID from that validated token;
 - allows only rooms on the configured Matrix homeserver;
 - verifies that the user is currently joined to the requested room through
-  Synapse's authenticated room-members endpoint; and
+  Synapse's authenticated room-members endpoint;
+- derives the ORISO source conversation from the call room's restricted join
+  rule and asks UserService to verify both current source-room membership and
+  the current tenant call policy; and
+- limits the signed LiveKit grant to microphone-only or microphone plus video
+  sources according to that policy; and
 - forwards approved requests to the internal upstream authorization service.
 
 The upstream service and its signed LiveKit webhook remain cluster-internal.
@@ -44,6 +49,8 @@ The public base URL is `/livekit/jwt`.
 | `MATRIX_CLIENT_BASE_URL` | Trusted HTTPS homeserver client API used for `joined_members` checks |
 | `MATRIX_MEMBERSHIP_TOKEN_FILE` | Mounted file containing the dedicated non-admin membership-reader token |
 | `MATRIXRTC_UPSTREAM_URL` | Cluster-internal upstream authorization-service URL |
+| `MATRIXRTC_CALL_POLICY_URL` | Cluster-internal UserService call-policy endpoint |
+| `MATRIXRTC_CALL_POLICY_TOKEN_FILE` | Mounted file containing the shared call-policy authentication token |
 
 Optional limits are `PORT`, `MATRIXRTC_REQUEST_TIMEOUT_MS`,
 `MATRIXRTC_MAX_AUTHORITY_RESPONSE_BYTES`,
@@ -62,6 +69,13 @@ Mount it from a Kubernetes Secret; never place it in a ConfigMap, image,
 repository, log, URL, or client response. Kicked, left, invited, and banned
 users are absent from `joined_members` and therefore cannot receive media
 credentials.
+
+The call-policy credential is shared only by this gateway and UserService.
+Policy lookup is fail-closed: an unknown source room, missing tenant settings,
+disabled call media, malformed response, or unavailable UserService prevents a
+new media credential from being issued. Existing browser tabs therefore pick
+up an Admin Off/On change on their next call, reconnect, or rejoin without
+requiring a page reload.
 
 ## Local validation
 

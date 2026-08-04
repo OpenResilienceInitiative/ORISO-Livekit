@@ -1,9 +1,10 @@
 name: Reusable Node Validation steps
+description: Install token-service dependencies and run the Node test suite.
 
 inputs:
   node_version:
+    description: Node.js version to install.
     required: true
-    type: string
 
 runs:
   using: 'composite'

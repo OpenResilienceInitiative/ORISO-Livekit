@@ -1,0 +1,177 @@
+name: Release MatrixRTC Auth Images
+
+on:
+  push:
+    branches:
+      - "release/livekit-*"
+
+env:
+  REGISTRY: ghcr.io
+  ORG: openresilienceinitiative
+  POLICY_GATEWAY_IMAGE_NAME: matrixrtc-auth-policy-gateway
+  AUTHORIZATION_SERVICE_IMAGE_NAME: matrixrtc-authorization-service
+  RELEASE_PREFIX: release/livekit-
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  packages: write
+
+jobs:
+  release:
+    name: validate, tag and publish MatrixRTC auth images
+    if: ${{ github.event.deleted == false }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate release branch and image tags
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BRANCH="${GITHUB_REF_NAME}"
+          VERSION="${BRANCH#${RELEASE_PREFIX}}"
+
+          if [[ "${BRANCH}" == "${VERSION}" ]]; then
+            echo "::error::Release branch must match ${RELEASE_PREFIX}<version>, for example ${RELEASE_PREFIX}2.0.1"
+            exit 1
+          fi
+
+          if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release version must be semantic version format, for example 2.0.1"
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::Tag v${VERSION} already exists. Choose a new version."
+            exit 1
+          fi
+
+          POLICY_GATEWAY_IMAGE="${REGISTRY}/${ORG}/${POLICY_GATEWAY_IMAGE_NAME}:${VERSION}"
+          AUTHORIZATION_SERVICE_IMAGE="${REGISTRY}/${ORG}/${AUTHORIZATION_SERVICE_IMAGE_NAME}:${VERSION}"
+
+          for image in "${POLICY_GATEWAY_IMAGE}" "${AUTHORIZATION_SERVICE_IMAGE}"; do
+            if docker buildx imagetools inspect "${image}" >/dev/null 2>&1; then
+              echo "::error::Image tag ${image} already exists. Choose a new version."
+              exit 1
+            fi
+          done
+
+          echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+          echo "POLICY_GATEWAY_IMAGE=${POLICY_GATEWAY_IMAGE}" >> "${GITHUB_ENV}"
+          echo "AUTHORIZATION_SERVICE_IMAGE=${AUTHORIZATION_SERVICE_IMAGE}" >> "${GITHUB_ENV}"
+
+      - name: Validate policy gateway
+        uses: ./.github/actions/node-validate
+        with:
+          node_version: "22"
+
+      - name: Build and push policy gateway image
+        id: policy_image
+        uses: docker/build-push-action@v7
+        with:
+          context: token-service
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ env.POLICY_GATEWAY_IMAGE }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Reject fixable policy gateway vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.POLICY_GATEWAY_IMAGE_NAME }}@${{ steps.policy_image.outputs.digest }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Sign and publish policy gateway provenance
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.1.0
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.POLICY_GATEWAY_IMAGE_NAME }}
+          subject-digest: ${{ steps.policy_image.outputs.digest }}
+          push-to-registry: true
+
+      - name: Build and push authorization service image
+        id: issuer_image
+        uses: docker/build-push-action@v7
+        with:
+          context: authorization-service
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ env.AUTHORIZATION_SERVICE_IMAGE }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Reject fixable authorization service vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.AUTHORIZATION_SERVICE_IMAGE_NAME }}@${{ steps.issuer_image.outputs.digest }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Sign and publish authorization service provenance
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.1.0
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.AUTHORIZATION_SERVICE_IMAGE_NAME }}
+          subject-digest: ${{ steps.issuer_image.outputs.digest }}
+          push-to-registry: true
+
+      - name: Create and push release tag
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Release MatrixRTC auth images v${VERSION}"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "v${VERSION}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: MatrixRTC Auth Images v${{ env.VERSION }}
+          generate_release_notes: true
+          body: |
+            Docker images:
+            `${{ env.POLICY_GATEWAY_IMAGE }}`
+            `${{ env.AUTHORIZATION_SERVICE_IMAGE }}`
+
+            Source branch:
+            `${{ github.ref_name }}`

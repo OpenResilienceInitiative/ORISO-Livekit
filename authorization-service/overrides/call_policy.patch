@@ -1,0 +1,59 @@
+diff --git a/handler.go b/handler.go
+--- a/handler.go
++++ b/handler.go
+@@ -62,7 +62,7 @@ func writeIfMatrixError(w http.ResponseWriter, err error) bool {
+ 	return false
+ }
+ 
+-func getJoinToken(apiKey string, apiSecret string, room LiveKitRoomAlias, identity LiveKitIdentity) (string, error) {
++func getJoinToken(apiKey string, apiSecret string, room LiveKitRoomAlias, identity LiveKitIdentity, allowedPublishSources ...[]string) (string, error) {
+ 	at := auth.NewAccessToken(apiKey, apiSecret)
+ 
+ 	canPublish := true
+@@ -76,6 +76,9 @@ func getJoinToken(apiKey string, apiSecret string, room LiveKitRoomAlias, identi
+ 		CanUpdateOwnMetadata: &canUpdateOwnMetadata,
+ 		Room:                 string(room),
+ 	}
++	if len(allowedPublishSources) > 0 {
++		grant.CanPublishSources = append([]string(nil), allowedPublishSources[0]...)
++	}
+ 
+ 	at.SetVideoGrant(grant).
+ 		SetIdentity(string(identity)).
+@@ -531,7 +534,7 @@ func (h *Handler) processLegacySFURequest(r *http.Request, req *LegacySFURequest
+ 	slotId := "m.call#ROOM"
+ 	lkRoomAlias := LiveKitRoomAliasFor(req.Room, slotId)
+ 
+-	token, err := getJoinToken(h.liveKitAuth.key, h.liveKitAuth.secret, lkRoomAlias, lkIdentity)
++	token, err := getJoinToken(h.liveKitAuth.key, h.liveKitAuth.secret, lkRoomAlias, lkIdentity, req.AllowedPublishSources)
+ 	if err != nil {
+ 		return nil, &MatrixErrorResponse{
+ 			Status:  http.StatusInternalServerError,
+@@ -617,7 +620,7 @@ func (h *Handler) processSFURequest(r *http.Request, req *SFURequest) (*SFURespo
+ 	lkIdentity := LiveKitIdentityFor(matrixID, req.Member.ClaimedDeviceID, req.Member.ID)
+ 	lkRoomAlias := LiveKitRoomAliasFor(req.RoomID, req.SlotID)
+ 
+-	token, err := getJoinToken(h.liveKitAuth.key, h.liveKitAuth.secret, lkRoomAlias, lkIdentity)
++	token, err := getJoinToken(h.liveKitAuth.key, h.liveKitAuth.secret, lkRoomAlias, lkIdentity, req.AllowedPublishSources)
+ 	if err != nil {
+ 		slog.Error("Handler: error getting LiveKit token", "matrixId", matrixID, "err", err)
+ 		return nil, &MatrixErrorResponse{
+diff --git a/requests.go b/requests.go
+--- a/requests.go
++++ b/requests.go
+@@ -40,6 +40,7 @@ type LegacySFURequest struct {
+ 	DeviceID     string          `json:"device_id"`
+ 	DelayId      string          `json:"delay_id,omitempty"`
+ 	DelayTimeout int             `json:"delay_timeout,omitempty"`
++	AllowedPublishSources []string `json:"allowed_publish_sources,omitempty"`
+ 	// Deprecated and ignored to allow transition. Server discovery or explicit overrides via
+ 	// LIVEKIT_CS_API_URL_OVERRIDES will be used instead.
+ 	DelayCsApiUrl string `json:"delay_cs_api_url,omitempty"`
+@@ -56,6 +57,7 @@ type SFURequest struct {
+ 	// remove these parameters and the related code at some point.
+ 	DelayId      string `json:"delay_id,omitempty"`
+ 	DelayTimeout int    `json:"delay_timeout,omitempty"`
++	AllowedPublishSources []string `json:"allowed_publish_sources,omitempty"`
+ 	// Deprecated and ignored to allow transition. Server discovery or explicit overrides via
+ 	// LIVEKIT_CS_API_URL_OVERRIDES will be used instead.
+ 	DelayCsApiUrl string `json:"delay_cs_api_url,omitempty"`

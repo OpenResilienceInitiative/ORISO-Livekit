@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - pre-dev
 
 env:
   REGISTRY: ghcr.io
@@ -16,21 +17,74 @@ jobs:
 
     permissions:
       contents: read
+      id-token: write
+      attestations: write
       packages: write
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v6
+      with:
+        persist-credentials: false
 
     - name: Validate token service
       uses: ./.github/actions/node-validate
       with:
-        node_version: '20'
+        node_version: '22'
 
     - name: Create and Publish Docker image
+      id: policy_image
       uses: ./.github/actions/docker-build-push
       with:
         push_to_ghcr: true
-        image_name: livekit-token-service
+        image_name: matrixrtc-auth-policy-gateway
         github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: token-service
+
+    - name: Reject fixable policy-gateway image vulnerabilities
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-auth-policy-gateway@${{ steps.policy_image.outputs.digest }}
+        format: table
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: os,library
+        severity: CRITICAL,HIGH
+
+    - name: Sign and publish policy-gateway provenance
+      uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.1.0
+      with:
+        subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-auth-policy-gateway
+        subject-digest: ${{ steps.policy_image.outputs.digest }}
+        push-to-registry: true
+
+    - name: Create and Publish privacy-safe authorization service
+      id: issuer_image
+      uses: ./.github/actions/docker-build-push
+      with:
+        push_to_ghcr: true
+        image_name: matrixrtc-authorization-service
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        context_dir: authorization-service
+
+    - name: Reject fixable authorization-service image vulnerabilities
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-authorization-service@${{ steps.issuer_image.outputs.digest }}
+        format: table
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: os,library
+        severity: CRITICAL,HIGH
+
+    - name: Sign and publish authorization-service provenance
+      uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.1.0
+      with:
+        subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-authorization-service
+        subject-digest: ${{ steps.issuer_image.outputs.digest }}
+        push-to-registry: true
+
+    - name: Record published digests
+      run: |
+        echo '${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-auth-policy-gateway@${{ steps.policy_image.outputs.digest }}' >> "$GITHUB_STEP_SUMMARY"
+        echo '${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-authorization-service@${{ steps.issuer_image.outputs.digest }}' >> "$GITHUB_STEP_SUMMARY"

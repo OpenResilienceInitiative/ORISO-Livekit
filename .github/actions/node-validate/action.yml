@@ -1,9 +1,10 @@
 name: Reusable Node Validation steps
+description: Install token-service dependencies and run the Node test suite.
 
 inputs:
   node_version:
+    description: Node.js version to install.
     required: true
-    type: string
 
 runs:
   using: 'composite'
@@ -13,14 +14,14 @@ runs:
     with:
       node-version: ${{ inputs.node_version }}
       cache: npm
-      cache-dependency-path: token-service/package.json
+      cache-dependency-path: token-service/package-lock.json
 
   - name: Install dependencies
     shell: bash
-    run: npm install
+    run: npm ci
     working-directory: token-service
 
-  - name: Validate server entrypoint syntax
+  - name: Test policy gateway
     shell: bash
-    run: node --check server.js
+    run: npm test
     working-directory: token-service

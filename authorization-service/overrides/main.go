@@ -53,6 +53,9 @@ func configureLogging(logLevelString string, writer io.Writer) {
 
 func main() {
 	configureLogging(os.Getenv("LIVEKIT_LOG_LEVEL"), os.Stderr)
+	if err := installFederationURLOverridesFromEnvironment(); err != nil {
+		log.Fatal("Invalid LIVEKIT_FEDERATION_URL_OVERRIDES configuration")
+	}
 
 	config, err := parseConfig()
 	if err != nil {

@@ -10,6 +10,10 @@ const MATRIX_CLIENT_BASE_URL = process.env.MATRIX_CLIENT_BASE_URL?.trim();
 const MATRIX_MEMBERSHIP_TOKEN_FILE =
 	process.env.MATRIX_MEMBERSHIP_TOKEN_FILE?.trim();
 const MATRIXRTC_UPSTREAM_URL = process.env.MATRIXRTC_UPSTREAM_URL?.trim();
+const MATRIXRTC_CALL_POLICY_URL =
+	process.env.MATRIXRTC_CALL_POLICY_URL?.trim();
+const MATRIXRTC_CALL_POLICY_TOKEN_FILE =
+	process.env.MATRIXRTC_CALL_POLICY_TOKEN_FILE?.trim();
 const REQUEST_TIMEOUT_MS = Number.parseInt(
 	process.env.MATRIXRTC_REQUEST_TIMEOUT_MS || '8000',
 	10
@@ -63,7 +67,9 @@ if (ALLOWED_ORIGINS.size === 0) {
 if (
 	!MATRIX_SERVER_NAME ||
 	!MATRIX_MEMBERSHIP_TOKEN_FILE ||
-	!MATRIXRTC_UPSTREAM_URL
+	!MATRIXRTC_UPSTREAM_URL ||
+	!MATRIXRTC_CALL_POLICY_URL ||
+	!MATRIXRTC_CALL_POLICY_TOKEN_FILE
 ) {
 	throw new Error('Matrix authorization configuration is incomplete');
 }
@@ -77,6 +83,7 @@ const CLIENT_BASE_URL = requireSecureMatrixUrl(
 	'MATRIX_CLIENT_BASE_URL'
 );
 const UPSTREAM_BASE_URL = new URL(MATRIXRTC_UPSTREAM_URL);
+const CALL_POLICY_URL = new URL(MATRIXRTC_CALL_POLICY_URL);
 
 const MATRIX_MEMBERSHIP_TOKEN = readFileSync(
 	MATRIX_MEMBERSHIP_TOKEN_FILE,
@@ -85,6 +92,13 @@ const MATRIX_MEMBERSHIP_TOKEN = readFileSync(
 if (!MATRIX_MEMBERSHIP_TOKEN) {
 	throw new Error('Matrix membership token file is empty');
 }
+const MATRIXRTC_CALL_POLICY_TOKEN = readFileSync(
+	MATRIXRTC_CALL_POLICY_TOKEN_FILE,
+	'utf8'
+).trim();
+if (!MATRIXRTC_CALL_POLICY_TOKEN) {
+	throw new Error('MatrixRTC call policy token file is empty');
+}
 
 const escapeRegExp = (value) =>
 	value.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -92,6 +106,12 @@ const ROOM_ID_PATTERN = new RegExp(
 	`^![A-Za-z0-9._~=-]+:${escapeRegExp(MATRIX_SERVER_NAME)}$`
 );
 const LOCAL_USER_ID_SUFFIX = `:${MATRIX_SERVER_NAME}`;
+const ALL_VIDEO_CALL_SOURCES = [
+	'microphone',
+	'camera',
+	'screen_share',
+	'screen_share_audio'
+];
 
 const readBodyLimited = async (response, maxBytes) => {
 	const advertisedLength = Number.parseInt(
@@ -139,7 +159,8 @@ const sanitizeUpstreamBody = (path, body) => {
 			openid_token: sanitizeOpenIdToken(body.openid_token),
 			device_id: body.device_id,
 			delay_id: body.delay_id,
-			delay_timeout: body.delay_timeout
+			delay_timeout: body.delay_timeout,
+			allowed_publish_sources: body.allowed_publish_sources
 		};
 	}
 
@@ -149,12 +170,24 @@ const sanitizeUpstreamBody = (path, body) => {
 		openid_token: sanitizeOpenIdToken(body.openid_token),
 		member: sanitizeMember(body.member),
 		delay_id: body.delay_id,
-		delay_timeout: body.delay_timeout
+		delay_timeout: body.delay_timeout,
+		allowed_publish_sources: body.allowed_publish_sources
 	};
 	if (path === '/delegate_delayed_leave') {
 		return sanitized;
 	}
 	return sanitized;
+};
+
+const sourceRoomFromJoinRule = (joinRule) => {
+	if (joinRule?.join_rule !== 'restricted' || !Array.isArray(joinRule.allow)) {
+		return null;
+	}
+	const sourceRooms = joinRule.allow
+		.filter((entry) => entry?.type === 'm.room_membership')
+		.map((entry) => entry.room_id)
+		.filter((roomId) => typeof roomId === 'string' && ROOM_ID_PATTERN.test(roomId));
+	return sourceRooms.length === 1 ? sourceRooms[0] : null;
 };
 
 const createRateLimiter = () => {
@@ -252,6 +285,12 @@ app.use('/livekit/jwt', async (req, res, next) => {
 	}
 	if (!userInfoResponse.ok) {
 		clearTimeout(deadlineTimer);
+		console.warn(
+			JSON.stringify({
+				event: 'matrixrtc_authorization_denied',
+				reason: 'openid_authority_rejected'
+			})
+		);
 		return res.status(401).json({ error: 'unauthorized' });
 	}
 
@@ -270,6 +309,12 @@ app.use('/livekit/jwt', async (req, res, next) => {
 			req.body.member.claimed_user_id !== matrixUserId)
 	) {
 		clearTimeout(deadlineTimer);
+		console.warn(
+			JSON.stringify({
+				event: 'matrixrtc_authorization_denied',
+				reason: 'openid_subject_scope_mismatch'
+			})
+		);
 		return res.status(401).json({ error: 'unauthorized' });
 	}
 
@@ -326,6 +371,88 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		clearTimeout(deadlineTimer);
 		return res.status(403).json({ error: 'forbidden' });
 	}
+
+	if (req.path === '/delegate_delayed_leave') {
+		return next();
+	}
+
+	const joinRuleUrl = new URL(
+		`/_matrix/client/v3/rooms/${encodeURIComponent(room)}/state/m.room.join_rules/`,
+		CLIENT_BASE_URL
+	);
+	let joinRuleResponse;
+	try {
+		joinRuleResponse = await fetch(joinRuleUrl, {
+			headers: {
+				authorization: `Bearer ${MATRIX_MEMBERSHIP_TOKEN}`
+			},
+			signal: deadline.signal
+		});
+	} catch {
+		clearTimeout(deadlineTimer);
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+	if (!joinRuleResponse.ok) {
+		clearTimeout(deadlineTimer);
+		return res.status(403).json({ error: 'forbidden' });
+	}
+
+	let sourceRoomId;
+	try {
+		sourceRoomId = sourceRoomFromJoinRule(
+			await readJsonLimited(joinRuleResponse)
+		);
+	} catch {
+		clearTimeout(deadlineTimer);
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+	if (!sourceRoomId) {
+		clearTimeout(deadlineTimer);
+		return res.status(403).json({ error: 'forbidden' });
+	}
+
+	let callPolicyResponse;
+	try {
+		callPolicyResponse = await fetch(CALL_POLICY_URL, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				'x-matrixrtc-policy-token': MATRIXRTC_CALL_POLICY_TOKEN
+			},
+			body: JSON.stringify({ sourceRoomId, matrixUserId }),
+			signal: deadline.signal
+		});
+	} catch {
+		clearTimeout(deadlineTimer);
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+	if (!callPolicyResponse.ok) {
+		clearTimeout(deadlineTimer);
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+
+	let callPolicy;
+	try {
+		callPolicy = await readJsonLimited(callPolicyResponse);
+	} catch {
+		clearTimeout(deadlineTimer);
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+	if (
+		typeof callPolicy?.audioAllowed !== 'boolean' ||
+		typeof callPolicy?.videoAllowed !== 'boolean'
+	) {
+		clearTimeout(deadlineTimer);
+		return res.status(503).json({ error: 'authorization unavailable' });
+	}
+	if (!callPolicy.audioAllowed && !callPolicy.videoAllowed) {
+		clearTimeout(deadlineTimer);
+		return res.status(403).json({ error: 'forbidden' });
+	}
+
+	req.body.allowed_publish_sources = callPolicy.videoAllowed
+		? ALL_VIDEO_CALL_SOURCES
+		: ['microphone'];
 
 	return next();
 });

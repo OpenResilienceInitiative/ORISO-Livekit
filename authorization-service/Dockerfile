@@ -22,6 +22,7 @@ COPY overrides/logging_test.go ./logging_test.go
 COPY overrides/federation_url_override.go ./federation_url_override.go
 COPY overrides/federation_url_override_test.go ./federation_url_override_test.go
 RUN go mod edit -require=google.golang.org/grpc@v1.82.1 \
+    && go mod edit -require=golang.org/x/text@v0.39.0 \
     && go mod tidy \
     && go test ./...
 

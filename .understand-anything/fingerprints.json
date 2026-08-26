@@ -1,0 +1,509 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "4170fd7527cb7451693f528f10fcbae6e6591cb6",
+  "generatedAt": "2026-08-26T07:28:29.700Z",
+  "files": {
+    "authorization-service/overrides/call_policy_test.go": {
+      "filePath": "authorization-service/overrides/call_policy_test.go",
+      "contentHash": "260b9430a70bc8b8dcbdebc450b065a4c05fdd0018df1f64358f69a7c7e5a87d",
+      "functions": [
+        {
+          "name": "TestJoinTokenRestrictsPublishedTrackSources",
+          "params": [
+            "t"
+          ],
+          "exported": true,
+          "lineCount": 30
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "reflect",
+          "specifiers": [
+            "reflect"
+          ]
+        },
+        {
+          "source": "testing",
+          "specifiers": [
+            "testing"
+          ]
+        },
+        {
+          "source": "github.com/livekit/protocol/auth",
+          "specifiers": [
+            "auth"
+          ]
+        }
+      ],
+      "exports": [
+        "TestJoinTokenRestrictsPublishedTrackSources"
+      ],
+      "totalLines": 40,
+      "hasStructuralAnalysis": true
+    },
+    "authorization-service/overrides/federation_url_override.go": {
+      "filePath": "authorization-service/overrides/federation_url_override.go",
+      "contentHash": "53865efd10d921d3131f6497da29d2f7c4be6327cb26d1c1b83ffcda80fd1fcf",
+      "functions": [
+        {
+          "name": "RoundTrip",
+          "params": [
+            "request"
+          ],
+          "returnType": "(*http.Response, error)",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "parseFederationURLOverrides",
+          "params": [
+            "raw"
+          ],
+          "returnType": "(map[string]*url.URL, error)",
+          "exported": false,
+          "lineCount": 27
+        },
+        {
+          "name": "newExchangeOpenIDUserInfoWithFederationOverrides",
+          "params": [
+            "overrides",
+            "fallback"
+          ],
+          "returnType": "func(context.Context, OpenIDTokenType, bool) (*fclient.UserInfo, error)",
+          "exported": false,
+          "lineCount": 44
+        },
+        {
+          "name": "installFederationURLOverridesFromEnvironment",
+          "params": [],
+          "returnType": "error",
+          "exported": false,
+          "lineCount": 17
+        }
+      ],
+      "classes": [
+        {
+          "name": "federationURLOverrideTransport",
+          "methods": [
+            "RoundTrip"
+          ],
+          "properties": [
+            "baseURL",
+            "transport"
+          ],
+          "exported": false,
+          "lineCount": 4
+        }
+      ],
+      "imports": [
+        {
+          "source": "context",
+          "specifiers": [
+            "context"
+          ]
+        },
+        {
+          "source": "crypto/tls",
+          "specifiers": [
+            "tls"
+          ]
+        },
+        {
+          "source": "errors",
+          "specifiers": [
+            "errors"
+          ]
+        },
+        {
+          "source": "fmt",
+          "specifiers": [
+            "fmt"
+          ]
+        },
+        {
+          "source": "net/http",
+          "specifiers": [
+            "http"
+          ]
+        },
+        {
+          "source": "net/url",
+          "specifiers": [
+            "url"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "strings",
+          "specifiers": [
+            "strings"
+          ]
+        },
+        {
+          "source": "github.com/matrix-org/gomatrixserverlib/fclient",
+          "specifiers": [
+            "fclient"
+          ]
+        },
+        {
+          "source": "github.com/matrix-org/gomatrixserverlib/spec",
+          "specifiers": [
+            "spec"
+          ]
+        }
+      ],
+      "exports": [
+        "RoundTrip"
+      ],
+      "totalLines": 128,
+      "hasStructuralAnalysis": true
+    },
+    "authorization-service/overrides/federation_url_override_test.go": {
+      "filePath": "authorization-service/overrides/federation_url_override_test.go",
+      "contentHash": "29d9fc364d7e66975f489090a4514c405fe463dc83fb398142c0c467609b54bc",
+      "functions": [
+        {
+          "name": "TestFederationURLOverridePreservesLegacyServerName",
+          "params": [
+            "t"
+          ],
+          "exported": true,
+          "lineCount": 54
+        },
+        {
+          "name": "TestFederationURLOverrideRejectsPlainHTTP",
+          "params": [
+            "t"
+          ],
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "context",
+          "specifiers": [
+            "context"
+          ]
+        },
+        {
+          "source": "net/http",
+          "specifiers": [
+            "http"
+          ]
+        },
+        {
+          "source": "net/http/httptest",
+          "specifiers": [
+            "httptest"
+          ]
+        },
+        {
+          "source": "net/url",
+          "specifiers": [
+            "url"
+          ]
+        },
+        {
+          "source": "testing",
+          "specifiers": [
+            "testing"
+          ]
+        },
+        {
+          "source": "github.com/matrix-org/gomatrixserverlib/fclient",
+          "specifiers": [
+            "fclient"
+          ]
+        }
+      ],
+      "exports": [
+        "TestFederationURLOverridePreservesLegacyServerName",
+        "TestFederationURLOverrideRejectsPlainHTTP"
+      ],
+      "totalLines": 75,
+      "hasStructuralAnalysis": true
+    },
+    "authorization-service/overrides/logging_test.go": {
+      "filePath": "authorization-service/overrides/logging_test.go",
+      "contentHash": "a1afa3e0ca16787201f0354ea1c19d89e2bf3c3fd2fd044e78667824756e8c48",
+      "functions": [
+        {
+          "name": "TestConfigureLoggingOffDiscardsStructuredAndStandardLogs",
+          "params": [
+            "t"
+          ],
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "bytes",
+          "specifiers": [
+            "bytes"
+          ]
+        },
+        {
+          "source": "log",
+          "specifiers": [
+            "log"
+          ]
+        },
+        {
+          "source": "log/slog",
+          "specifiers": [
+            "slog"
+          ]
+        },
+        {
+          "source": "testing",
+          "specifiers": [
+            "testing"
+          ]
+        }
+      ],
+      "exports": [
+        "TestConfigureLoggingOffDiscardsStructuredAndStandardLogs"
+      ],
+      "totalLines": 23,
+      "hasStructuralAnalysis": true
+    },
+    "authorization-service/overrides/main.go": {
+      "filePath": "authorization-service/overrides/main.go",
+      "contentHash": "d94f86c4aeca8156c3718de4801c4055a4badc45f10b95fa8453714e9f299c56",
+      "functions": [
+        {
+          "name": "configureLogging",
+          "params": [
+            "logLevelString",
+            "writer"
+          ],
+          "exported": false,
+          "lineCount": 32
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": false,
+          "lineCount": 56
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "io",
+          "specifiers": [
+            "io"
+          ]
+        },
+        {
+          "source": "log",
+          "specifiers": [
+            "log"
+          ]
+        },
+        {
+          "source": "log/slog",
+          "specifiers": [
+            "slog"
+          ]
+        },
+        {
+          "source": "net/http",
+          "specifiers": [
+            "http"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "strings",
+          "specifiers": [
+            "strings"
+          ]
+        },
+        {
+          "source": "github.com/SladkyCitron/slogcolor",
+          "specifiers": [
+            "slogcolor"
+          ]
+        },
+        {
+          "source": "github.com/livekit/protocol/auth",
+          "specifiers": [
+            "auth"
+          ]
+        },
+        {
+          "source": "github.com/mattn/go-isatty",
+          "specifiers": [
+            "go-isatty"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 110,
+      "hasStructuralAnalysis": true
+    },
+    "token-service/server.js": {
+      "filePath": "token-service/server.js",
+      "contentHash": "f6ce23888a90369c98fc804ee988e0c7083ef95395363c3885e4946ffab12759",
+      "functions": [
+        {
+          "name": "parseAllowedOrigins",
+          "params": [
+            "value"
+          ],
+          "exported": false,
+          "lineCount": 13
+        },
+        {
+          "name": "requireSecureMatrixUrl",
+          "params": [
+            "value",
+            "name"
+          ],
+          "exported": false,
+          "lineCount": 12
+        },
+        {
+          "name": "escapeRegExp",
+          "params": [
+            "value"
+          ],
+          "exported": false,
+          "lineCount": 2
+        },
+        {
+          "name": "readBodyLimited",
+          "params": [
+            "response",
+            "maxBytes"
+          ],
+          "exported": false,
+          "lineCount": 20
+        },
+        {
+          "name": "readJsonLimited",
+          "params": [
+            "response"
+          ],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "sanitizeOpenIdToken",
+          "params": [
+            "token"
+          ],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "sanitizeMember",
+          "params": [
+            "member"
+          ],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "sanitizeUpstreamBody",
+          "params": [
+            "path",
+            "body"
+          ],
+          "exported": false,
+          "lineCount": 26
+        },
+        {
+          "name": "sourceRoomFromJoinRule",
+          "params": [
+            "joinRule"
+          ],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "createRateLimiter",
+          "params": [],
+          "exported": false,
+          "lineCount": 18
+        },
+        {
+          "name": "proxyToAuthorizationService",
+          "params": [
+            "req",
+            "res",
+            "upstreamPath"
+          ],
+          "exported": false,
+          "lineCount": 35
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 519,
+      "hasStructuralAnalysis": true
+    },
+    "token-service/test/immutable-bases.test.js": {
+      "filePath": "token-service/test/immutable-bases.test.js",
+      "contentHash": "a2733ca99079ec4a8a385698384e5a29bfebc27082b31ca11d8bde8b4006f1ed",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 93,
+      "hasStructuralAnalysis": true
+    },
+    "token-service/test/wrong-origin.test.js": {
+      "filePath": "token-service/test/wrong-origin.test.js",
+      "contentHash": "67cc4657e0f645e7b6210e785956445c0ce530927a20a8dfdbaaa0b1a6765091",
+      "functions": [
+        {
+          "name": "listen",
+          "params": [
+            "server",
+            "port"
+          ],
+          "exported": false,
+          "lineCount": 2
+        },
+        {
+          "name": "close",
+          "params": [
+            "server"
+          ],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "waitUntilReady",
+          "params": [],
+          "exported": false,
+          "lineCount": 12
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 626,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

@@ -1,0 +1,1649 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "ORISO-Livekit",
+    "languages": [
+      "dockerfile",
+      "go",
+      "javascript",
+      "json",
+      "markdown"
+    ],
+    "frameworks": [],
+    "description": "",
+    "analyzedAt": "2026-08-26T07:28:29.634Z",
+    "gitCommitHash": "4170fd7527cb7451693f528f10fcbae6e6591cb6"
+  },
+  "nodes": [
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "document file with 5 sections (104 lines).",
+      "tags": [
+        "document",
+        "root"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:authorization-service/Dockerfile",
+      "type": "config",
+      "name": "Dockerfile",
+      "filePath": "authorization-service/Dockerfile",
+      "summary": "config file (48 lines).",
+      "tags": [
+        "config",
+        "authorization-service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "service:authorization-service/Dockerfile:source",
+      "type": "service",
+      "name": "source",
+      "filePath": "authorization-service/Dockerfile",
+      "summary": "Service source (image: alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40)",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "service:authorization-service/Dockerfile:--platform=${BUILDPLATFORM}",
+      "type": "service",
+      "name": "--platform=${BUILDPLATFORM}",
+      "filePath": "authorization-service/Dockerfile",
+      "summary": "Service --platform=${BUILDPLATFORM} (image: --platform=${BUILDPLATFORM})",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "service:authorization-service/Dockerfile:scratch",
+      "type": "service",
+      "name": "scratch",
+      "filePath": "authorization-service/Dockerfile",
+      "summary": "Service scratch (image: scratch)",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:ARG UPSTREAM_REVISION=a375b130a43fade115e0e71ad159f11265107d89",
+      "type": "pipeline",
+      "name": "ARG UPSTREAM_REVISION=a375b130a43fade115e0e71ad159f11265107d89",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        1,
+        1
+      ],
+      "summary": "Step: ARG UPSTREAM_REVISION=a375b130a43fade115e0e71ad159f11265107d89",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:ARG UPSTREAM_ARCHIVE_SHA256=72f36f4411a2ac0412aa549eb421abde25e4",
+      "type": "pipeline",
+      "name": "ARG UPSTREAM_ARCHIVE_SHA256=72f36f4411a2ac0412aa549eb421abde25e4",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        2,
+        2
+      ],
+      "summary": "Step: ARG UPSTREAM_ARCHIVE_SHA256=72f36f4411a2ac0412aa549eb421abde25e4",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125",
+      "type": "pipeline",
+      "name": "FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        4,
+        4
+      ],
+      "summary": "Step: FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:ARG UPSTREAM_REVISION",
+      "type": "pipeline",
+      "name": "ARG UPSTREAM_REVISION",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        5,
+        5
+      ],
+      "summary": "Step: ARG UPSTREAM_REVISION",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:ARG UPSTREAM_ARCHIVE_SHA256",
+      "type": "pipeline",
+      "name": "ARG UPSTREAM_ARCHIVE_SHA256",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        6,
+        6
+      ],
+      "summary": "Step: ARG UPSTREAM_ARCHIVE_SHA256",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:WORKDIR /download",
+      "type": "pipeline",
+      "name": "WORKDIR /download",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        7,
+        7
+      ],
+      "summary": "Step: WORKDIR /download",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:RUN wget -qO source.tar.gz \"https://github.com/element-hq/lk-jwt",
+      "type": "pipeline",
+      "name": "RUN wget -qO source.tar.gz \"https://github.com/element-hq/lk-jwt",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        8,
+        8
+      ],
+      "summary": "Step: RUN wget -qO source.tar.gz \"https://github.com/element-hq/lk-jwt",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:FROM --platform=${BUILDPLATFORM} golang:1.26.5-alpine@sha256:0178",
+      "type": "pipeline",
+      "name": "FROM --platform=${BUILDPLATFORM} golang:1.26.5-alpine@sha256:0178",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        13,
+        13
+      ],
+      "summary": "Step: FROM --platform=${BUILDPLATFORM} golang:1.26.5-alpine@sha256:0178",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:RUN apk add --no-cache patch",
+      "type": "pipeline",
+      "name": "RUN apk add --no-cache patch",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        14,
+        14
+      ],
+      "summary": "Step: RUN apk add --no-cache patch",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:WORKDIR /src",
+      "type": "pipeline",
+      "name": "WORKDIR /src",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        15,
+        15
+      ],
+      "summary": "Step: WORKDIR /src",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY --from=source /src /src",
+      "type": "pipeline",
+      "name": "COPY --from=source /src /src",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        16,
+        16
+      ],
+      "summary": "Step: COPY --from=source /src /src",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY overrides/call_policy.patch /tmp/call_policy.patch",
+      "type": "pipeline",
+      "name": "COPY overrides/call_policy.patch /tmp/call_policy.patch",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        17,
+        17
+      ],
+      "summary": "Step: COPY overrides/call_policy.patch /tmp/call_policy.patch",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:RUN patch -p1 < /tmp/call_policy.patch",
+      "type": "pipeline",
+      "name": "RUN patch -p1 < /tmp/call_policy.patch",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        18,
+        18
+      ],
+      "summary": "Step: RUN patch -p1 < /tmp/call_policy.patch",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY overrides/main.go ./main.go",
+      "type": "pipeline",
+      "name": "COPY overrides/main.go ./main.go",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        19,
+        19
+      ],
+      "summary": "Step: COPY overrides/main.go ./main.go",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY overrides/call_policy_test.go ./call_policy_test.go",
+      "type": "pipeline",
+      "name": "COPY overrides/call_policy_test.go ./call_policy_test.go",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        20,
+        20
+      ],
+      "summary": "Step: COPY overrides/call_policy_test.go ./call_policy_test.go",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY overrides/logging_test.go ./logging_test.go",
+      "type": "pipeline",
+      "name": "COPY overrides/logging_test.go ./logging_test.go",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        21,
+        21
+      ],
+      "summary": "Step: COPY overrides/logging_test.go ./logging_test.go",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY overrides/federation_url_override.go ./federation_url_overri",
+      "type": "pipeline",
+      "name": "COPY overrides/federation_url_override.go ./federation_url_overri",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        22,
+        22
+      ],
+      "summary": "Step: COPY overrides/federation_url_override.go ./federation_url_overri",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY overrides/federation_url_override_test.go ./federation_url_o",
+      "type": "pipeline",
+      "name": "COPY overrides/federation_url_override_test.go ./federation_url_o",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        23,
+        23
+      ],
+      "summary": "Step: COPY overrides/federation_url_override_test.go ./federation_url_o",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:RUN go mod edit -require=google.golang.org/grpc@v1.82.1 \\",
+      "type": "pipeline",
+      "name": "RUN go mod edit -require=google.golang.org/grpc@v1.82.1 \\",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        24,
+        24
+      ],
+      "summary": "Step: RUN go mod edit -require=google.golang.org/grpc@v1.82.1 \\",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:ARG TARGETOS TARGETARCH",
+      "type": "pipeline",
+      "name": "ARG TARGETOS TARGETARCH",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        29,
+        29
+      ],
+      "summary": "Step: ARG TARGETOS TARGETARCH",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o ",
+      "type": "pipeline",
+      "name": "RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o ",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        30,
+        30
+      ],
+      "summary": "Step: RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o ",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:RUN echo 'hosts: files dns' > /out/nsswitch.conf",
+      "type": "pipeline",
+      "name": "RUN echo 'hosts: files dns' > /out/nsswitch.conf",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        32,
+        32
+      ],
+      "summary": "Step: RUN echo 'hosts: files dns' > /out/nsswitch.conf",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:FROM scratch",
+      "type": "pipeline",
+      "name": "FROM scratch",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        34,
+        34
+      ],
+      "summary": "Step: FROM scratch",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY --from=builder /out/lk-jwt-service /lk-jwt-service",
+      "type": "pipeline",
+      "name": "COPY --from=builder /out/lk-jwt-service /lk-jwt-service",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        40,
+        40
+      ],
+      "summary": "Step: COPY --from=builder /out/lk-jwt-service /lk-jwt-service",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY --from=builder /out/lk-jwt-service-healthcheck /lk-jwt-servi",
+      "type": "pipeline",
+      "name": "COPY --from=builder /out/lk-jwt-service-healthcheck /lk-jwt-servi",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        41,
+        41
+      ],
+      "summary": "Step: COPY --from=builder /out/lk-jwt-service-healthcheck /lk-jwt-servi",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/c",
+      "type": "pipeline",
+      "name": "COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/c",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        42,
+        42
+      ],
+      "summary": "Step: COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/c",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:COPY --from=builder /out/nsswitch.conf /etc/nsswitch.conf",
+      "type": "pipeline",
+      "name": "COPY --from=builder /out/nsswitch.conf /etc/nsswitch.conf",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        43,
+        43
+      ],
+      "summary": "Step: COPY --from=builder /out/nsswitch.conf /etc/nsswitch.conf",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:USER 65532:65532",
+      "type": "pipeline",
+      "name": "USER 65532:65532",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        44,
+        44
+      ],
+      "summary": "Step: USER 65532:65532",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:EXPOSE 8080",
+      "type": "pipeline",
+      "name": "EXPOSE 8080",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        45,
+        45
+      ],
+      "summary": "Step: EXPOSE 8080",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:CMD [\"/lk-jwt-service\"]",
+      "type": "pipeline",
+      "name": "CMD [\"/lk-jwt-service\"]",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        46,
+        46
+      ],
+      "summary": "Step: CMD [\"/lk-jwt-service\"]",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:authorization-service/Dockerfile:HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD [\"/lk-jwt-servic",
+      "type": "pipeline",
+      "name": "HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD [\"/lk-jwt-servic",
+      "filePath": "authorization-service/Dockerfile",
+      "lineRange": [
+        47,
+        47
+      ],
+      "summary": "Step: HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD [\"/lk-jwt-servic",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:authorization-service/README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "authorization-service/README.md",
+      "summary": "document file with 1 sections (29 lines).",
+      "tags": [
+        "document",
+        "authorization-service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:authorization-service/overrides/call_policy_test.go",
+      "type": "file",
+      "name": "call_policy_test.go",
+      "filePath": "authorization-service/overrides/call_policy_test.go",
+      "summary": "go source: 1 functions, 0 classes, 3 imports.",
+      "tags": [
+        "go",
+        "authorization-service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:authorization-service/overrides/call_policy_test.go:TestJoinTokenRestrictsPublishedTrackSources",
+      "type": "function",
+      "name": "TestJoinTokenRestrictsPublishedTrackSources",
+      "filePath": "authorization-service/overrides/call_policy_test.go",
+      "lineRange": [
+        10,
+        39
+      ],
+      "summary": "Function TestJoinTokenRestrictsPublishedTrackSources(t)",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:authorization-service/overrides/federation_url_override.go",
+      "type": "file",
+      "name": "federation_url_override.go",
+      "filePath": "authorization-service/overrides/federation_url_override.go",
+      "summary": "go source: 4 functions, 1 classes, 10 imports.",
+      "tags": [
+        "go",
+        "authorization-service"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:authorization-service/overrides/federation_url_override.go:RoundTrip",
+      "type": "function",
+      "name": "RoundTrip",
+      "filePath": "authorization-service/overrides/federation_url_override.go",
+      "lineRange": [
+        22,
+        36
+      ],
+      "summary": "Function RoundTrip(request)",
+      "tags": [],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:authorization-service/overrides/federation_url_override.go:parseFederationURLOverrides",
+      "type": "function",
+      "name": "parseFederationURLOverrides",
+      "filePath": "authorization-service/overrides/federation_url_override.go",
+      "lineRange": [
+        38,
+        64
+      ],
+      "summary": "Function parseFederationURLOverrides(raw)",
+      "tags": [],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:authorization-service/overrides/federation_url_override.go:newExchangeOpenIDUserInfoWithFederationOverrides",
+      "type": "function",
+      "name": "newExchangeOpenIDUserInfoWithFederationOverrides",
+      "filePath": "authorization-service/overrides/federation_url_override.go",
+      "lineRange": [
+        66,
+        109
+      ],
+      "summary": "Function newExchangeOpenIDUserInfoWithFederationOverrides(overrides, fallback)",
+      "tags": [],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:authorization-service/overrides/federation_url_override.go:installFederationURLOverridesFromEnvironment",
+      "type": "function",
+      "name": "installFederationURLOverridesFromEnvironment",
+      "filePath": "authorization-service/overrides/federation_url_override.go",
+      "lineRange": [
+        111,
+        127
+      ],
+      "summary": "Function installFederationURLOverridesFromEnvironment()",
+      "tags": [],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:authorization-service/overrides/federation_url_override.go:federationURLOverrideTransport",
+      "type": "class",
+      "name": "federationURLOverrideTransport",
+      "filePath": "authorization-service/overrides/federation_url_override.go",
+      "lineRange": [
+        17,
+        20
+      ],
+      "summary": "Class federationURLOverrideTransport with 1 methods",
+      "tags": [],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:authorization-service/overrides/federation_url_override_test.go",
+      "type": "file",
+      "name": "federation_url_override_test.go",
+      "filePath": "authorization-service/overrides/federation_url_override_test.go",
+      "summary": "go source: 2 functions, 0 classes, 6 imports.",
+      "tags": [
+        "go",
+        "authorization-service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:authorization-service/overrides/federation_url_override_test.go:TestFederationURLOverridePreservesLegacyServerName",
+      "type": "function",
+      "name": "TestFederationURLOverridePreservesLegacyServerName",
+      "filePath": "authorization-service/overrides/federation_url_override_test.go",
+      "lineRange": [
+        13,
+        66
+      ],
+      "summary": "Function TestFederationURLOverridePreservesLegacyServerName(t)",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:authorization-service/overrides/federation_url_override_test.go:TestFederationURLOverrideRejectsPlainHTTP",
+      "type": "function",
+      "name": "TestFederationURLOverrideRejectsPlainHTTP",
+      "filePath": "authorization-service/overrides/federation_url_override_test.go",
+      "lineRange": [
+        68,
+        74
+      ],
+      "summary": "Function TestFederationURLOverrideRejectsPlainHTTP(t)",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:authorization-service/overrides/logging_test.go",
+      "type": "file",
+      "name": "logging_test.go",
+      "filePath": "authorization-service/overrides/logging_test.go",
+      "summary": "go source: 1 functions, 0 classes, 4 imports.",
+      "tags": [
+        "go",
+        "authorization-service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:authorization-service/overrides/logging_test.go:TestConfigureLoggingOffDiscardsStructuredAndStandardLogs",
+      "type": "function",
+      "name": "TestConfigureLoggingOffDiscardsStructuredAndStandardLogs",
+      "filePath": "authorization-service/overrides/logging_test.go",
+      "lineRange": [
+        12,
+        22
+      ],
+      "summary": "Function TestConfigureLoggingOffDiscardsStructuredAndStandardLogs(t)",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:authorization-service/overrides/main.go",
+      "type": "file",
+      "name": "main.go",
+      "filePath": "authorization-service/overrides/main.go",
+      "summary": "go source: 2 functions, 0 classes, 9 imports.",
+      "tags": [
+        "go",
+        "authorization-service"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:authorization-service/overrides/main.go:configureLogging",
+      "type": "function",
+      "name": "configureLogging",
+      "filePath": "authorization-service/overrides/main.go",
+      "lineRange": [
+        21,
+        52
+      ],
+      "summary": "Function configureLogging(logLevelString, writer)",
+      "tags": [],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:authorization-service/overrides/main.go:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "authorization-service/overrides/main.go",
+      "lineRange": [
+        54,
+        109
+      ],
+      "summary": "Function main()",
+      "tags": [],
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:token-service/Dockerfile",
+      "type": "config",
+      "name": "Dockerfile",
+      "filePath": "token-service/Dockerfile",
+      "summary": "config file (24 lines).",
+      "tags": [
+        "config",
+        "token-service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "service:token-service/Dockerfile:node",
+      "type": "service",
+      "name": "node",
+      "filePath": "token-service/Dockerfile",
+      "summary": "Service node (image: node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2)",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-service/Dockerfile:FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c689",
+      "type": "pipeline",
+      "name": "FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c689",
+      "filePath": "token-service/Dockerfile",
+      "lineRange": [
+        1,
+        1
+      ],
+      "summary": "Step: FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c689",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-service/Dockerfile:WORKDIR /app",
+      "type": "pipeline",
+      "name": "WORKDIR /app",
+      "filePath": "token-service/Dockerfile",
+      "lineRange": [
+        3,
+        3
+      ],
+      "summary": "Step: WORKDIR /app",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-service/Dockerfile:COPY package.json package-lock.json ./",
+      "type": "pipeline",
+      "name": "COPY package.json package-lock.json ./",
+      "filePath": "token-service/Dockerfile",
+      "lineRange": [
+        5,
+        5
+      ],
+      "summary": "Step: COPY package.json package-lock.json ./",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-service/Dockerfile:RUN npm ci --omit=dev \\",
+      "type": "pipeline",
+      "name": "RUN npm ci --omit=dev \\",
+      "filePath": "token-service/Dockerfile",
+      "lineRange": [
+        6,
+        6
+      ],
+      "summary": "Step: RUN npm ci --omit=dev \\",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-service/Dockerfile:COPY server.js ./",
+      "type": "pipeline",
+      "name": "COPY server.js ./",
+      "filePath": "token-service/Dockerfile",
+      "lineRange": [
+        17,
+        17
+      ],
+      "summary": "Step: COPY server.js ./",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-service/Dockerfile:USER 1000:1000",
+      "type": "pipeline",
+      "name": "USER 1000:1000",
+      "filePath": "token-service/Dockerfile",
+      "lineRange": [
+        19,
+        19
+      ],
+      "summary": "Step: USER 1000:1000",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-service/Dockerfile:EXPOSE 3010",
+      "type": "pipeline",
+      "name": "EXPOSE 3010",
+      "filePath": "token-service/Dockerfile",
+      "lineRange": [
+        21,
+        21
+      ],
+      "summary": "Step: EXPOSE 3010",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-service/Dockerfile:CMD [\"node\", \"server.js\"]",
+      "type": "pipeline",
+      "name": "CMD [\"node\", \"server.js\"]",
+      "filePath": "token-service/Dockerfile",
+      "lineRange": [
+        23,
+        23
+      ],
+      "summary": "Step: CMD [\"node\", \"server.js\"]",
+      "tags": [],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:token-service/package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "token-service/package.json",
+      "summary": "config file with 7 sections (18 lines).",
+      "tags": [
+        "config",
+        "token-service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:token-service/server.js",
+      "type": "file",
+      "name": "server.js",
+      "filePath": "token-service/server.js",
+      "summary": "javascript source: 11 functions, 0 classes, 0 imports.",
+      "tags": [
+        "javascript",
+        "token-service"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:parseAllowedOrigins",
+      "type": "function",
+      "name": "parseAllowedOrigins",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        34,
+        46
+      ],
+      "summary": "Function parseAllowedOrigins(value)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:requireSecureMatrixUrl",
+      "type": "function",
+      "name": "requireSecureMatrixUrl",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        48,
+        59
+      ],
+      "summary": "Function requireSecureMatrixUrl(value, name)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:escapeRegExp",
+      "type": "function",
+      "name": "escapeRegExp",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        103,
+        104
+      ],
+      "summary": "Function escapeRegExp(value)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:readBodyLimited",
+      "type": "function",
+      "name": "readBodyLimited",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        116,
+        135
+      ],
+      "summary": "Function readBodyLimited(response, maxBytes)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:readJsonLimited",
+      "type": "function",
+      "name": "readJsonLimited",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        137,
+        140
+      ],
+      "summary": "Function readJsonLimited(response)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:sanitizeOpenIdToken",
+      "type": "function",
+      "name": "sanitizeOpenIdToken",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        142,
+        147
+      ],
+      "summary": "Function sanitizeOpenIdToken(token)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:sanitizeMember",
+      "type": "function",
+      "name": "sanitizeMember",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        149,
+        153
+      ],
+      "summary": "Function sanitizeMember(member)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:sanitizeUpstreamBody",
+      "type": "function",
+      "name": "sanitizeUpstreamBody",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        155,
+        180
+      ],
+      "summary": "Function sanitizeUpstreamBody(path, body)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:sourceRoomFromJoinRule",
+      "type": "function",
+      "name": "sourceRoomFromJoinRule",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        182,
+        191
+      ],
+      "summary": "Function sourceRoomFromJoinRule(joinRule)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:createRateLimiter",
+      "type": "function",
+      "name": "createRateLimiter",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        193,
+        210
+      ],
+      "summary": "Function createRateLimiter()",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/server.js:proxyToAuthorizationService",
+      "type": "function",
+      "name": "proxyToAuthorizationService",
+      "filePath": "token-service/server.js",
+      "lineRange": [
+        460,
+        494
+      ],
+      "summary": "Function proxyToAuthorizationService(req, res, upstreamPath)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:token-service/test/immutable-bases.test.js",
+      "type": "file",
+      "name": "immutable-bases.test.js",
+      "filePath": "token-service/test/immutable-bases.test.js",
+      "summary": "javascript source: 0 functions, 0 classes, 0 imports.",
+      "tags": [
+        "javascript",
+        "token-service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:token-service/test/wrong-origin.test.js",
+      "type": "file",
+      "name": "wrong-origin.test.js",
+      "filePath": "token-service/test/wrong-origin.test.js",
+      "summary": "javascript source: 3 functions, 0 classes, 0 imports.",
+      "tags": [
+        "javascript",
+        "token-service"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/test/wrong-origin.test.js:listen",
+      "type": "function",
+      "name": "listen",
+      "filePath": "token-service/test/wrong-origin.test.js",
+      "lineRange": [
+        34,
+        35
+      ],
+      "summary": "Function listen(server, port)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/test/wrong-origin.test.js:close",
+      "type": "function",
+      "name": "close",
+      "filePath": "token-service/test/wrong-origin.test.js",
+      "lineRange": [
+        37,
+        40
+      ],
+      "summary": "Function close(server)",
+      "tags": [],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:token-service/test/wrong-origin.test.js:waitUntilReady",
+      "type": "function",
+      "name": "waitUntilReady",
+      "filePath": "token-service/test/wrong-origin.test.js",
+      "lineRange": [
+        42,
+        53
+      ],
+      "summary": "Function waitUntilReady()",
+      "tags": [],
+      "complexity": "complex"
+    }
+  ],
+  "edges": [
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "service:authorization-service/Dockerfile:source",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "service:authorization-service/Dockerfile:--platform=${BUILDPLATFORM}",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "service:authorization-service/Dockerfile:scratch",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:ARG UPSTREAM_REVISION=a375b130a43fade115e0e71ad159f11265107d89",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:ARG UPSTREAM_ARCHIVE_SHA256=72f36f4411a2ac0412aa549eb421abde25e4",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:ARG UPSTREAM_REVISION",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:ARG UPSTREAM_ARCHIVE_SHA256",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:WORKDIR /download",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:RUN wget -qO source.tar.gz \"https://github.com/element-hq/lk-jwt",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:FROM --platform=${BUILDPLATFORM} golang:1.26.5-alpine@sha256:0178",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:RUN apk add --no-cache patch",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:WORKDIR /src",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY --from=source /src /src",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY overrides/call_policy.patch /tmp/call_policy.patch",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:RUN patch -p1 < /tmp/call_policy.patch",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY overrides/main.go ./main.go",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY overrides/call_policy_test.go ./call_policy_test.go",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY overrides/logging_test.go ./logging_test.go",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY overrides/federation_url_override.go ./federation_url_overri",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY overrides/federation_url_override_test.go ./federation_url_o",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:RUN go mod edit -require=google.golang.org/grpc@v1.82.1 \\",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:ARG TARGETOS TARGETARCH",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o ",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:RUN echo 'hosts: files dns' > /out/nsswitch.conf",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:FROM scratch",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY --from=builder /out/lk-jwt-service /lk-jwt-service",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY --from=builder /out/lk-jwt-service-healthcheck /lk-jwt-servi",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/c",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:COPY --from=builder /out/nsswitch.conf /etc/nsswitch.conf",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:USER 65532:65532",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:EXPOSE 8080",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:CMD [\"/lk-jwt-service\"]",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:authorization-service/Dockerfile",
+      "target": "step:authorization-service/Dockerfile:HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD [\"/lk-jwt-servic",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/call_policy_test.go",
+      "target": "function:authorization-service/overrides/call_policy_test.go:TestJoinTokenRestrictsPublishedTrackSources",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/federation_url_override.go",
+      "target": "function:authorization-service/overrides/federation_url_override.go:RoundTrip",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/federation_url_override.go",
+      "target": "function:authorization-service/overrides/federation_url_override.go:parseFederationURLOverrides",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/federation_url_override.go",
+      "target": "function:authorization-service/overrides/federation_url_override.go:newExchangeOpenIDUserInfoWithFederationOverrides",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/federation_url_override.go",
+      "target": "function:authorization-service/overrides/federation_url_override.go:installFederationURLOverridesFromEnvironment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/federation_url_override.go",
+      "target": "class:authorization-service/overrides/federation_url_override.go:federationURLOverrideTransport",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/federation_url_override_test.go",
+      "target": "function:authorization-service/overrides/federation_url_override_test.go:TestFederationURLOverridePreservesLegacyServerName",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/federation_url_override_test.go",
+      "target": "function:authorization-service/overrides/federation_url_override_test.go:TestFederationURLOverrideRejectsPlainHTTP",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/logging_test.go",
+      "target": "function:authorization-service/overrides/logging_test.go:TestConfigureLoggingOffDiscardsStructuredAndStandardLogs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/main.go",
+      "target": "function:authorization-service/overrides/main.go:configureLogging",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:authorization-service/overrides/main.go",
+      "target": "function:authorization-service/overrides/main.go:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:token-service/Dockerfile",
+      "target": "service:token-service/Dockerfile:node",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:token-service/Dockerfile",
+      "target": "step:token-service/Dockerfile:FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c689",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:token-service/Dockerfile",
+      "target": "step:token-service/Dockerfile:WORKDIR /app",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:token-service/Dockerfile",
+      "target": "step:token-service/Dockerfile:COPY package.json package-lock.json ./",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:token-service/Dockerfile",
+      "target": "step:token-service/Dockerfile:RUN npm ci --omit=dev \\",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:token-service/Dockerfile",
+      "target": "step:token-service/Dockerfile:COPY server.js ./",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:token-service/Dockerfile",
+      "target": "step:token-service/Dockerfile:USER 1000:1000",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:token-service/Dockerfile",
+      "target": "step:token-service/Dockerfile:EXPOSE 3010",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:token-service/Dockerfile",
+      "target": "step:token-service/Dockerfile:CMD [\"node\", \"server.js\"]",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:parseAllowedOrigins",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:requireSecureMatrixUrl",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:escapeRegExp",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:readBodyLimited",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:readJsonLimited",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:sanitizeOpenIdToken",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:sanitizeMember",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:sanitizeUpstreamBody",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:sourceRoomFromJoinRule",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:createRateLimiter",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/server.js",
+      "target": "function:token-service/server.js:proxyToAuthorizationService",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/test/wrong-origin.test.js",
+      "target": "function:token-service/test/wrong-origin.test.js:listen",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/test/wrong-origin.test.js",
+      "target": "function:token-service/test/wrong-origin.test.js:close",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:token-service/test/wrong-origin.test.js",
+      "target": "function:token-service/test/wrong-origin.test.js:waitUntilReady",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:core",
+      "name": "Core",
+      "description": "Core application files",
+      "nodeIds": [
+        "file:authorization-service/overrides/call_policy_test.go",
+        "file:authorization-service/overrides/federation_url_override.go",
+        "file:authorization-service/overrides/federation_url_override_test.go",
+        "file:authorization-service/overrides/logging_test.go",
+        "file:authorization-service/overrides/main.go",
+        "file:token-service/server.js"
+      ]
+    },
+    {
+      "id": "layer:test-layer",
+      "name": "Test Layer",
+      "description": "Test files and test utilities",
+      "nodeIds": [
+        "file:token-service/test/immutable-bases.test.js",
+        "file:token-service/test/wrong-origin.test.js"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Core",
+      "description": "Core application files. Key files: call_policy_test.go, federation_url_override.go, federation_url_override_test.go, logging_test.go, main.go, server.js.",
+      "nodeIds": [
+        "file:authorization-service/overrides/call_policy_test.go",
+        "file:authorization-service/overrides/federation_url_override.go",
+        "file:authorization-service/overrides/federation_url_override_test.go",
+        "file:authorization-service/overrides/logging_test.go",
+        "file:authorization-service/overrides/main.go",
+        "file:token-service/server.js"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Test Layer",
+      "description": "Test files and test utilities. Key files: immutable-bases.test.js, wrong-origin.test.js.",
+      "nodeIds": [
+        "file:token-service/test/immutable-bases.test.js",
+        "file:token-service/test/wrong-origin.test.js"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Supporting Components",
+      "description": "Additional supporting files: README.md, Dockerfile, README.md, Dockerfile, package.json, source, --platform=${BUILDPLATFORM}, scratch, ARG UPSTREAM_REVISION=a375b130a43fade115e0e71ad159f11265107d89, ARG UPSTREAM_ARCHIVE_SHA256=72f36f4411a2ac0412aa549eb421abde25e4, FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125, ARG UPSTREAM_REVISION, ARG UPSTREAM_ARCHIVE_SHA256, WORKDIR /download, RUN wget -qO source.tar.gz \"https://github.com/element-hq/lk-jwt, FROM --platform=${BUILDPLATFORM} golang:1.26.5-alpine@sha256:0178, RUN apk add --no-cache patch, WORKDIR /src, COPY --from=source /src /src, COPY overrides/call_policy.patch /tmp/call_policy.patch, RUN patch -p1 < /tmp/call_policy.patch, COPY overrides/main.go ./main.go, COPY overrides/call_policy_test.go ./call_policy_test.go, COPY overrides/logging_test.go ./logging_test.go, COPY overrides/federation_url_override.go ./federation_url_overri, COPY overrides/federation_url_override_test.go ./federation_url_o, RUN go mod edit -require=google.golang.org/grpc@v1.82.1 \\, ARG TARGETOS TARGETARCH, RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o , RUN echo 'hosts: files dns' > /out/nsswitch.conf, FROM scratch, COPY --from=builder /out/lk-jwt-service /lk-jwt-service, COPY --from=builder /out/lk-jwt-service-healthcheck /lk-jwt-servi, COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/c, COPY --from=builder /out/nsswitch.conf /etc/nsswitch.conf, USER 65532:65532, EXPOSE 8080, CMD [\"/lk-jwt-service\"], HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD [\"/lk-jwt-servic, TestJoinTokenRestrictsPublishedTrackSources, RoundTrip, parseFederationURLOverrides, newExchangeOpenIDUserInfoWithFederationOverrides, installFederationURLOverridesFromEnvironment, federationURLOverrideTransport, TestFederationURLOverridePreservesLegacyServerName, TestFederationURLOverrideRejectsPlainHTTP, TestConfigureLoggingOffDiscardsStructuredAndStandardLogs, configureLogging, main, node, FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c689, WORKDIR /app, COPY package.json package-lock.json ./, RUN npm ci --omit=dev \\, COPY server.js ./, USER 1000:1000, EXPOSE 3010, CMD [\"node\", \"server.js\"], parseAllowedOrigins, requireSecureMatrixUrl, escapeRegExp, readBodyLimited, readJsonLimited, sanitizeOpenIdToken, sanitizeMember, sanitizeUpstreamBody, sourceRoomFromJoinRule, createRateLimiter, proxyToAuthorizationService, listen, close, waitUntilReady.",
+      "nodeIds": [
+        "document:README.md",
+        "config:authorization-service/Dockerfile",
+        "document:authorization-service/README.md",
+        "config:token-service/Dockerfile",
+        "config:token-service/package.json",
+        "service:authorization-service/Dockerfile:source",
+        "service:authorization-service/Dockerfile:--platform=${BUILDPLATFORM}",
+        "service:authorization-service/Dockerfile:scratch",
+        "step:authorization-service/Dockerfile:ARG UPSTREAM_REVISION=a375b130a43fade115e0e71ad159f11265107d89",
+        "step:authorization-service/Dockerfile:ARG UPSTREAM_ARCHIVE_SHA256=72f36f4411a2ac0412aa549eb421abde25e4",
+        "step:authorization-service/Dockerfile:FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125",
+        "step:authorization-service/Dockerfile:ARG UPSTREAM_REVISION",
+        "step:authorization-service/Dockerfile:ARG UPSTREAM_ARCHIVE_SHA256",
+        "step:authorization-service/Dockerfile:WORKDIR /download",
+        "step:authorization-service/Dockerfile:RUN wget -qO source.tar.gz \"https://github.com/element-hq/lk-jwt",
+        "step:authorization-service/Dockerfile:FROM --platform=${BUILDPLATFORM} golang:1.26.5-alpine@sha256:0178",
+        "step:authorization-service/Dockerfile:RUN apk add --no-cache patch",
+        "step:authorization-service/Dockerfile:WORKDIR /src",
+        "step:authorization-service/Dockerfile:COPY --from=source /src /src",
+        "step:authorization-service/Dockerfile:COPY overrides/call_policy.patch /tmp/call_policy.patch",
+        "step:authorization-service/Dockerfile:RUN patch -p1 < /tmp/call_policy.patch",
+        "step:authorization-service/Dockerfile:COPY overrides/main.go ./main.go",
+        "step:authorization-service/Dockerfile:COPY overrides/call_policy_test.go ./call_policy_test.go",
+        "step:authorization-service/Dockerfile:COPY overrides/logging_test.go ./logging_test.go",
+        "step:authorization-service/Dockerfile:COPY overrides/federation_url_override.go ./federation_url_overri",
+        "step:authorization-service/Dockerfile:COPY overrides/federation_url_override_test.go ./federation_url_o",
+        "step:authorization-service/Dockerfile:RUN go mod edit -require=google.golang.org/grpc@v1.82.1 \\",
+        "step:authorization-service/Dockerfile:ARG TARGETOS TARGETARCH",
+        "step:authorization-service/Dockerfile:RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o ",
+        "step:authorization-service/Dockerfile:RUN echo 'hosts: files dns' > /out/nsswitch.conf",
+        "step:authorization-service/Dockerfile:FROM scratch",
+        "step:authorization-service/Dockerfile:COPY --from=builder /out/lk-jwt-service /lk-jwt-service",
+        "step:authorization-service/Dockerfile:COPY --from=builder /out/lk-jwt-service-healthcheck /lk-jwt-servi",
+        "step:authorization-service/Dockerfile:COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/c",
+        "step:authorization-service/Dockerfile:COPY --from=builder /out/nsswitch.conf /etc/nsswitch.conf",
+        "step:authorization-service/Dockerfile:USER 65532:65532",
+        "step:authorization-service/Dockerfile:EXPOSE 8080",
+        "step:authorization-service/Dockerfile:CMD [\"/lk-jwt-service\"]",
+        "step:authorization-service/Dockerfile:HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD [\"/lk-jwt-servic",
+        "function:authorization-service/overrides/call_policy_test.go:TestJoinTokenRestrictsPublishedTrackSources",
+        "function:authorization-service/overrides/federation_url_override.go:RoundTrip",
+        "function:authorization-service/overrides/federation_url_override.go:parseFederationURLOverrides",
+        "function:authorization-service/overrides/federation_url_override.go:newExchangeOpenIDUserInfoWithFederationOverrides",
+        "function:authorization-service/overrides/federation_url_override.go:installFederationURLOverridesFromEnvironment",
+        "class:authorization-service/overrides/federation_url_override.go:federationURLOverrideTransport",
+        "function:authorization-service/overrides/federation_url_override_test.go:TestFederationURLOverridePreservesLegacyServerName",
+        "function:authorization-service/overrides/federation_url_override_test.go:TestFederationURLOverrideRejectsPlainHTTP",
+        "function:authorization-service/overrides/logging_test.go:TestConfigureLoggingOffDiscardsStructuredAndStandardLogs",
+        "function:authorization-service/overrides/main.go:configureLogging",
+        "function:authorization-service/overrides/main.go:main",
+        "service:token-service/Dockerfile:node",
+        "step:token-service/Dockerfile:FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c689",
+        "step:token-service/Dockerfile:WORKDIR /app",
+        "step:token-service/Dockerfile:COPY package.json package-lock.json ./",
+        "step:token-service/Dockerfile:RUN npm ci --omit=dev \\",
+        "step:token-service/Dockerfile:COPY server.js ./",
+        "step:token-service/Dockerfile:USER 1000:1000",
+        "step:token-service/Dockerfile:EXPOSE 3010",
+        "step:token-service/Dockerfile:CMD [\"node\", \"server.js\"]",
+        "function:token-service/server.js:parseAllowedOrigins",
+        "function:token-service/server.js:requireSecureMatrixUrl",
+        "function:token-service/server.js:escapeRegExp",
+        "function:token-service/server.js:readBodyLimited",
+        "function:token-service/server.js:readJsonLimited",
+        "function:token-service/server.js:sanitizeOpenIdToken",
+        "function:token-service/server.js:sanitizeMember",
+        "function:token-service/server.js:sanitizeUpstreamBody",
+        "function:token-service/server.js:sourceRoomFromJoinRule",
+        "function:token-service/server.js:createRateLimiter",
+        "function:token-service/server.js:proxyToAuthorizationService",
+        "function:token-service/test/wrong-origin.test.js:listen",
+        "function:token-service/test/wrong-origin.test.js:close",
+        "function:token-service/test/wrong-origin.test.js:waitUntilReady"
+      ]
+    }
+  ]
+}

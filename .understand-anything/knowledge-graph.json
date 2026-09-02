@@ -11,8 +11,8 @@
     ],
     "frameworks": [],
     "description": "",
-    "analyzedAt": "2026-08-26T07:28:29.634Z",
-    "gitCommitHash": "4170fd7527cb7451693f528f10fcbae6e6591cb6"
+    "analyzedAt": "2026-08-27T12:31:55.708Z",
+    "gitCommitHash": "b05c56a749ce4a3fe99ab301a1fa30ca698d21cd"
   },
   "nodes": [
     {
@@ -1038,6 +1038,53 @@
       "summary": "Function waitUntilReady()",
       "tags": [],
       "complexity": "complex"
+    },
+    {
+      "id": "concept:sfu-token-service",
+      "type": "concept",
+      "name": "LiveKit Token Service",
+      "summary": "Small Node service (token-service/server.js) that mints LiveKit access tokens for call participants — the bridge between the Matrix/Element Call world and the LiveKit SFU. Tests pin the immutable base-URL and wrong-origin behavior.",
+      "tags": [
+        "domain",
+        "core",
+        "calls",
+        "enriched"
+      ],
+      "complexity": "moderate",
+      "metadata": {
+        "enrichment": "a-lite-2026-07",
+        "generatedBy": "claude-operator-coarse-pass"
+      }
+    },
+    {
+      "id": "concept:authorization-overrides",
+      "type": "concept",
+      "name": "SFU Authorization Overrides",
+      "summary": "Go override files patched into the upstream LiveKit authorization service: call_policy.patch adjusts the call policy, federation_url_override.go pins federation URLs for the ORISO deployment.",
+      "tags": [
+        "security",
+        "integration",
+        "enriched"
+      ],
+      "complexity": "moderate",
+      "metadata": {
+        "enrichment": "a-lite-2026-07",
+        "generatedBy": "claude-operator-coarse-pass"
+      }
+    },
+    {
+      "id": "flow:token-issue",
+      "type": "flow",
+      "name": "Issuing a Call Token",
+      "summary": "Element Call requests a LiveKit token → token-service validates origin and identity → returns a scoped LiveKit JWT → the client connects to the SFU with it.",
+      "tags": [
+        "enriched"
+      ],
+      "complexity": "moderate",
+      "metadata": {
+        "enrichment": "a-lite-2026-07",
+        "generatedBy": "claude-operator-coarse-pass"
+      }
     }
   ],
   "edges": [
@@ -1516,9 +1563,82 @@
       "type": "contains",
       "direction": "forward",
       "weight": 1
+    },
+    {
+      "source": "concept:sfu-token-service",
+      "target": "file:token-service/server.js",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "concept:sfu-token-service",
+      "target": "config:token-service/package.json",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "concept:sfu-token-service",
+      "target": "file:token-service/test/immutable-bases.test.js",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "concept:sfu-token-service",
+      "target": "file:token-service/test/wrong-origin.test.js",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "concept:authorization-overrides",
+      "target": "file:authorization-service/overrides/main.go",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "concept:authorization-overrides",
+      "target": "file:authorization-service/overrides/federation_url_override.go",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "concept:authorization-overrides",
+      "target": "file:authorization-service/overrides/call_policy_test.go",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "flow:token-issue",
+      "target": "file:token-service/server.js",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "flow:token-issue",
+      "target": "file:authorization-service/overrides/main.go",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
     }
   ],
   "layers": [
+    {
+      "id": "layer:domain-concepts",
+      "name": "Domain Concepts",
+      "description": "High-level domain concepts and flows (coarse enrichment pass).",
+      "nodeIds": [
+        "concept:sfu-token-service",
+        "concept:authorization-overrides",
+        "flow:token-issue"
+      ]
+    },
     {
       "id": "layer:core",
       "name": "Core",

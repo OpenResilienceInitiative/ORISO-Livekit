@@ -39,7 +39,11 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 	);
 	assert.match(
 		dockerfile,
-		/go mod edit -require=google\.golang\.org\/grpc@v1\.82\.1/
+		/go mod edit -require=google\.golang\.org\/grpc@v1\.83\.1/
+	);
+	assert.match(
+		dockerfile,
+		/go mod edit -require=golang\.org\/x\/crypto@v0\.55\.0/
 	);
 });
 

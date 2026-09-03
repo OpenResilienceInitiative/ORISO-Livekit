@@ -5,13 +5,15 @@ FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc
 ARG UPSTREAM_REVISION
 ARG UPSTREAM_ARCHIVE_SHA256
 WORKDIR /download
-RUN wget -qO source.tar.gz "https://github.com/element-hq/lk-jwt-service/archive/${UPSTREAM_REVISION}.tar.gz" \
+RUN apk upgrade --no-cache libssl3 libcrypto3 \
+    && wget -qO source.tar.gz "https://github.com/element-hq/lk-jwt-service/archive/${UPSTREAM_REVISION}.tar.gz" \
     && echo "${UPSTREAM_ARCHIVE_SHA256}  source.tar.gz" | sha256sum -c - \
     && mkdir /src \
     && tar -xzf source.tar.gz --strip-components=1 -C /src
 
 FROM --platform=${BUILDPLATFORM} golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS builder
-RUN apk add --no-cache patch
+RUN apk upgrade --no-cache libssl3 libcrypto3 \
+    && apk add --no-cache patch
 WORKDIR /src
 COPY --from=source /src /src
 COPY overrides/call_policy.patch /tmp/call_policy.patch

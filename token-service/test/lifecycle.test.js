@@ -17,6 +17,8 @@ async function fixture(t, overrides = {}) {
     unknown: false,
     deleted: false,
     policyCalls: 0,
+    roomLists: 0,
+    now: Date.now(),
   };
   const external = createServer(async (req, res) => {
     if (req.url === "/policy") {
@@ -38,6 +40,7 @@ async function fixture(t, overrides = {}) {
     const request = body ? JSON.parse(body) : {};
     res.setHeader("content-type", "application/json");
     if (req.url.endsWith("/ListRooms")) {
+      state.roomLists++;
       res.end(JSON.stringify({ rooms: [{ name: "room-one" }] }));
       return;
     }
@@ -67,6 +70,7 @@ async function fixture(t, overrides = {}) {
       return;
     }
     if (req.url.endsWith("/GetParticipant")) {
+      if (state.blockGet) await state.blockGet();
       if (
         request.identity === "legacy-unknown" ? state.unknown : state.present
       ) {
@@ -91,6 +95,7 @@ async function fixture(t, overrides = {}) {
     policyUrl,
     livekitUrl: new URL(policyUrl).origin,
     reconcileIntervalMs: 50,
+    now: () => state.now,
     ...overrides,
   };
   const lifecycle = await createLifecycle(config);
@@ -589,4 +594,173 @@ test("registry GC honors per-pass batch size and carries remaining HSCAN entries
   for (let i = 0; i < 100 && f.state.policyCalls === before + 1; i++)
     await new Promise((r) => setTimeout(r, 5));
   assert.equal(f.state.policyCalls - before, 2);
+});
+
+test("one reconciliation pass inventories SFU rooms once despite multiple denied identities", async (t) => {
+  const f = await fixture(t, { reconcileIntervalMs: 400 });
+  await fetch(f.url + "/issue", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jwt: f.jwt }),
+  });
+  await fetch(f.url + "/internal/lifecycle/revoke", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: "Bearer separate-internal-secret-at-least-32-characters",
+    },
+    body: JSON.stringify({
+      matrixUserIds: ["@alice:matrix.test", "@bob:matrix.test"],
+    }),
+  });
+  const before = f.state.roomLists;
+  for (let i = 0; i < 100 && f.state.roomLists === before; i++)
+    await new Promise((r) => setTimeout(r, 10));
+  await new Promise((r) => setTimeout(r, 40));
+  assert.equal(f.state.roomLists - before, 1);
+});
+
+async function signedEvent(f, event) {
+  const body = JSON.stringify({
+    event,
+    room: { name: "room-one" },
+    participant: { identity: "opaque-alice" },
+  });
+  const token = new AccessToken(f.config.apiKey, f.config.apiSecret);
+  token.sha256 = require("node:crypto")
+    .createHash("sha256")
+    .update(body)
+    .digest("base64");
+  return fetch(f.url + "/internal/lifecycle/webhook", {
+    method: "POST",
+    headers: {
+      "content-type": "application/webhook+json",
+      authorization: await token.toJwt(),
+    },
+    body,
+  });
+}
+async function issue(f) {
+  assert.equal(
+    (
+      await fetch(f.url + "/issue", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jwt: f.jwt }),
+      })
+    ).status,
+    200,
+  );
+}
+async function admission(f) {
+  return (
+    await fetch(f.url + "/internal/lifecycle/admit", {
+      headers: { authorization: "Bearer " + f.jwt },
+    })
+  ).status;
+}
+async function eventually(check) {
+  for (let i = 0; i < 60; i++) {
+    if (await check()) return;
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  assert.fail("Expected eventual lifecycle state");
+}
+test("confirmed departure retains mapping for 24 hours then removes it after checking absence", async (t) => {
+  const f = await fixture(t, { gcIntervalMs: 20 });
+  await issue(f);
+  f.state.present = false;
+  assert.equal((await signedEvent(f, "participant_left")).status, 204);
+  f.state.now += 23 * 3600000;
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(await admission(f), 204);
+  f.state.now += 2 * 3600000;
+  await eventually(async () => (await admission(f)) === 403);
+});
+
+test("signed room completion respects the actual issued token expiry beyond the departure grace", async (t) => {
+  const f = await fixture(t, { gcIntervalMs: 20 });
+  const token = new AccessToken(f.config.apiKey, f.config.apiSecret, {
+    identity: "opaque-alice",
+    ttl: "48h",
+  });
+  token.addGrant({ roomJoin: true, room: "room-one" });
+  f.jwt = await token.toJwt();
+  await issue(f);
+  f.state.present = false;
+  assert.equal((await signedEvent(f, "room_finished")).status, 204);
+  f.state.now += 25 * 3600000;
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(await admission(f), 204);
+  f.state.now += 24 * 3600000;
+  await eventually(async () => (await admission(f)) === 403);
+});
+
+test("new registration and signed joins cancel scheduled departure cleanup", async (t) => {
+  const f = await fixture(t, { gcIntervalMs: 20 });
+  await issue(f);
+  for (const renewal of [
+    () => issue(f),
+    () => signedEvent(f, "participant_joined"),
+  ]) {
+    f.state.present = false;
+    assert.equal((await signedEvent(f, "participant_left")).status, 204);
+    await renewal();
+    f.state.now += 25 * 3600000;
+    await new Promise((r) => setTimeout(r, 60));
+    assert.equal(await admission(f), 204);
+  }
+});
+
+test("cleanup rechecks actual absence and a late signed join fences an in-flight absence result", async (t) => {
+  const f = await fixture(t, { gcIntervalMs: 20 });
+  await issue(f);
+  f.state.present = false;
+  assert.equal((await signedEvent(f, "participant_left")).status, 204);
+  let entered, release;
+  const blocked = new Promise((r) => {
+    entered = r;
+  });
+  const barrier = new Promise((r) => {
+    release = r;
+  });
+  f.state.blockGet = async () => {
+    f.state.blockGet = null;
+    entered();
+    await barrier;
+  };
+  f.state.now += 25 * 3600000;
+  await blocked;
+  assert.equal((await signedEvent(f, "participant_joined")).status, 204);
+  release();
+  await new Promise((r) => setTimeout(r, 80));
+  assert.equal(await admission(f), 204);
+  assert.equal(f.state.removals, 0);
+});
+
+test("bounded inventory recovers a lost departure webhook without forgetting an active participant", async (t) => {
+  const f = await fixture(t, { gcIntervalMs: 20 });
+  await issue(f);
+  f.state.now += 25 * 3600000;
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(await admission(f), 204);
+  f.state.present = false;
+  await new Promise((r) => setTimeout(r, 100));
+  f.state.now += 25 * 3600000;
+  await eventually(async () => (await admission(f)) === 403);
+});
+
+test("observing a participant present cancels an old departure even when its join webhook was lost", async (t) => {
+  const f = await fixture(t, { gcIntervalMs: 20 });
+  await issue(f);
+  f.state.present = false;
+  assert.equal((await signedEvent(f, "participant_left")).status, 204);
+  f.state.present = true;
+  f.state.now += 25 * 3600000;
+  await new Promise((r) => setTimeout(r, 80));
+  f.state.present = false;
+  await new Promise((r) => setTimeout(r, 80));
+  assert.equal(await admission(f), 204);
+  f.state.now += 25 * 3600000;
+  await eventually(async () => (await admission(f)) === 403);
 });

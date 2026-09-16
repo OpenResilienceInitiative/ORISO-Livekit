@@ -95,12 +95,17 @@ test("real policy gateway registers verified Matrix identity before delivering u
     rmSync(dir, { recursive: true, force: true });
   });
   const url = `http://127.0.0.1:${port}`;
+  let ready = false;
   for (let i = 0; i < 100; i++) {
     try {
-      if ((await fetch(url + "/health")).ok) break;
+      if ((await fetch(url + "/health")).ok) {
+        ready = true;
+        break;
+      }
     } catch {}
     await new Promise((r) => setTimeout(r, 30));
   }
+  assert.ok(ready, "gateway did not become healthy");
   const issue = () =>
     fetch(url + "/livekit/jwt/get_token", {
       method: "POST",

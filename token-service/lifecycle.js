@@ -1,5 +1,5 @@
 const express = require("express");
-const { createHash, timingSafeEqual } = require("node:crypto");
+const { createHash, timingSafeEqual, randomUUID } = require("node:crypto");
 const { createClient } = require("redis");
 const {
   TokenVerifier,
@@ -26,6 +26,7 @@ async function createLifecycle(config) {
   });
   redis.on("error", () => {});
   await redis.connect();
+  const now = config.now || Date.now;
   const prefix = `matrixrtc:lifecycle:${config.namespace || "v1"}:`;
   const rooms = new RoomServiceClient(
     config.livekitUrl,
@@ -75,17 +76,29 @@ async function createLifecycle(config) {
     const saved = await redis.eval(
       `if redis.call('SISMEMBER', KEYS[1], ARGV[1]) == 1 then return 0 end
     local existing=redis.call('HGET', KEYS[2], ARGV[2]); if existing and cjson.decode(existing).matrixUserId ~= ARGV[1] then return 0 end
-    redis.call('HSET', KEYS[2], ARGV[2], ARGV[3]); redis.call('SADD', KEYS[3], ARGV[2]); return 1`,
+    local record=cjson.decode(ARGV[3]); if existing then record.tokenExpiresAt=math.max(record.tokenExpiresAt,cjson.decode(existing).tokenExpiresAt or 0) end
+    redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(record)); redis.call('SADD', KEYS[3], ARGV[2]); redis.call('SADD', KEYS[4], ARGV[2]); redis.call('ZREM', KEYS[5], ARGV[2]); redis.call('DEL', KEYS[6]); return 1`,
       {
         keys: [
           prefix + "denied",
           prefix + "participants",
           prefix + "user:" + key(matrixUserId, ""),
+          prefix + "room:" + key(c.video.room, ""),
+          prefix + "departed",
+          prefix + "forgotten:" + id,
         ],
         arguments: [
           matrixUserId,
           id,
-          JSON.stringify({ room: c.video.room, identity: c.sub, matrixUserId }),
+          JSON.stringify({
+            room: c.video.room,
+            identity: c.sub,
+            matrixUserId,
+            tokenExpiresAt: c.exp * 1000,
+            version: randomUUID(),
+            roomIndex: key(c.video.room, ""),
+            userIndex: key(matrixUserId, ""),
+          }),
         ],
       },
     );
@@ -104,6 +117,79 @@ async function createLifecycle(config) {
       throw e;
     }
     throw new Error("Participant still present");
+  }
+  async function absent(record) {
+    try {
+      await rooms.getParticipant(record.room, record.identity);
+      return false;
+    } catch (e) {
+      if (e.code === "not_found") return true;
+      throw e;
+    }
+  }
+  async function cancelDeparture(id, raw) {
+    await redis.eval(
+      `if redis.call('HGET',KEYS[1],ARGV[1]) == ARGV[2] then redis.call('ZREM',KEYS[2],ARGV[1]) end; return 1`,
+      {
+        keys: [prefix + "participants", prefix + "departed"],
+        arguments: [id, raw],
+      },
+    );
+  }
+  async function departed(id) {
+    const raw = await redis.hGet(prefix + "participants", id);
+    if (!raw) return;
+    const record = JSON.parse(raw);
+    if (!Number.isFinite(record.tokenExpiresAt)) return;
+    if (!(await absent(record))) {
+      await cancelDeparture(id, raw);
+      return;
+    }
+    const due = Math.max(record.tokenExpiresAt, now() + 86400000);
+    await redis.eval(
+      `if redis.call('HGET',KEYS[1],ARGV[1]) ~= ARGV[2] then return 0 end
+      if not redis.call('ZSCORE',KEYS[2],ARGV[1]) then redis.call('ZADD',KEYS[2],ARGV[3],ARGV[1]) end; return 1`,
+      {
+        keys: [prefix + "participants", prefix + "departed"],
+        arguments: [id, raw, String(due)],
+      },
+    );
+  }
+  async function collectDeparted() {
+    const ids = await redis.zRangeByScore(prefix + "departed", 0, now(), {
+      LIMIT: { offset: 0, count: gcBatchSize },
+    });
+    for (const id of ids) {
+      if (stopped) return;
+      const raw = await redis.hGet(prefix + "participants", id);
+      if (!raw) {
+        await redis.zRem(prefix + "departed", id);
+        continue;
+      }
+      const record = JSON.parse(raw);
+      if (!(await absent(record))) {
+        await cancelDeparture(id, raw);
+        continue;
+      }
+      await redis.eval(
+        `if redis.call('HGET',KEYS[1],ARGV[1]) ~= ARGV[2] then return 0 end
+        local due=redis.call('ZSCORE',KEYS[2],ARGV[1]); if not due or tonumber(due)>tonumber(ARGV[3]) then return 0 end
+        redis.call('SET',KEYS[5],'1','EX',86400,'NX'); redis.call('HDEL',KEYS[1],ARGV[1]); redis.call('ZREM',KEYS[2],ARGV[1]);
+        redis.call('SREM',KEYS[3],ARGV[1]); redis.call('SREM',KEYS[4],ARGV[1]);
+        if redis.call('SCARD',KEYS[3]) == 0 then redis.call('SREM',KEYS[6],ARGV[4]) end; return 1`,
+        {
+          keys: [
+            prefix + "participants",
+            prefix + "departed",
+            prefix + "user:" + record.userIndex,
+            prefix + "room:" + record.roomIndex,
+            prefix + "forgotten:" + id,
+            prefix + "denied",
+          ],
+          arguments: [id, raw, String(now()), record.matrixUserId],
+        },
+      );
+    }
   }
   async function revoke(matrixUserIds) {
     await redis.sAdd(prefix + "denied", matrixUserIds);
@@ -160,7 +246,8 @@ async function createLifecycle(config) {
         `local ids=redis.call('SMEMBERS',KEYS[1]);
         for _,id in ipairs(ids) do
           redis.call('SET',ARGV[2]..id,'1','EX',86400,'NX');
-          redis.call('HDEL',KEYS[2],id);
+          local raw=redis.call('HGET',KEYS[2],id); if raw then local record=cjson.decode(raw); if record.roomIndex then redis.call('SREM',ARGV[3]..record.roomIndex,id) end end
+          redis.call('ZREM',KEYS[4],id); redis.call('HDEL',KEYS[2],id);
         end
         redis.call('DEL',KEYS[1]); redis.call('SREM',KEYS[3],ARGV[1]); return 1`,
         {
@@ -168,8 +255,9 @@ async function createLifecycle(config) {
             prefix + "user:" + key(matrixUserId, ""),
             prefix + "participants",
             prefix + "denied",
+            prefix + "departed",
           ],
-          arguments: [matrixUserId, prefix + "forgotten:"],
+          arguments: [matrixUserId, prefix + "forgotten:", prefix + "room:"],
         },
       );
     }
@@ -197,6 +285,23 @@ async function createLifecycle(config) {
         } catch {
           return res.sendStatus(403);
         }
+        if (["participant_left", "room_finished"].includes(event.event)) {
+          if (!event.room?.name) return res.sendStatus(400);
+          try {
+            if (event.event === "participant_left") {
+              if (!event.participant?.identity) return res.sendStatus(400);
+              await departed(key(event.room.name, event.participant.identity));
+            } else {
+              for (const id of await redis.sMembers(
+                prefix + "room:" + key(event.room.name, ""),
+              ))
+                await departed(id);
+            }
+            return res.sendStatus(204);
+          } catch {
+            return res.sendStatus(503);
+          }
+        }
         if (event.event !== "participant_joined") return res.sendStatus(204);
         const room = event.room?.name,
           identity = event.participant?.identity;
@@ -215,6 +320,14 @@ async function createLifecycle(config) {
             await remove({ room, identity });
             return res.sendStatus(204);
           }
+          await redis.eval(
+            `local raw=redis.call('HGET',KEYS[1],ARGV[1]); if not raw then return 0 end
+            local record=cjson.decode(raw); record.version=ARGV[2]; redis.call('HSET',KEYS[1],ARGV[1],cjson.encode(record)); redis.call('ZREM',KEYS[2],ARGV[1]); return 1`,
+            {
+              keys: [prefix + "participants", prefix + "departed"],
+              arguments: [key(room, identity), randomUUID()],
+            },
+          );
           if (
             (await redis.sIsMember(prefix + "denied", record.matrixUserId)) ||
             !(await active(record.matrixUserId))
@@ -315,14 +428,20 @@ async function createLifecycle(config) {
       gcPending = page.entries;
     }
     const batch = gcPending.splice(0, gcBatchSize);
-    const seen = new Set();
+    const statuses = new Map();
     for (const entry of batch) {
       if (stopped) return;
       try {
         const record = JSON.parse(entry.value);
-        if (seen.has(record.matrixUserId)) continue;
-        seen.add(record.matrixUserId);
-        if ((await policyStatus(record.matrixUserId)) !== 410) continue;
+        if (!statuses.has(record.matrixUserId))
+          statuses.set(
+            record.matrixUserId,
+            await policyStatus(record.matrixUserId),
+          );
+        if (statuses.get(record.matrixUserId) !== 410) {
+          await departed(entry.field);
+          continue;
+        }
         await removeKnown([record.matrixUserId], false);
         await eraseMappings([record.matrixUserId]);
       } catch {
@@ -332,7 +451,9 @@ async function createLifecycle(config) {
   }
   const gcTimer = setInterval(() => {
     if (!stopped && !gcRunning)
-      gcRunning = collectDeleted()
+      gcRunning = collectDeparted()
+        .catch(() => {})
+        .then(collectDeleted)
         .catch(() => {})
         .finally(() => {
           gcRunning = null;
@@ -351,7 +472,7 @@ async function createLifecycle(config) {
       for (const matrixUserId of members) {
         if (stopped) return;
         try {
-          await removeDenied([matrixUserId]);
+          await removeKnown([matrixUserId]);
         } catch {
           /* Durable deny survives failures for the next pass. */
         }

@@ -15,7 +15,7 @@ The existing `matrixrtc-auth-policy-gateway:3010` owns these internal routes:
 | `POST /internal/lifecycle/revoke` | Dedicated shared `Authorization: Bearer` secret | Body `{ "matrixUserIds": ["@person:homeserver"] }`; 204 only after SFU absence is verified; 503 remains retryable |
 | `POST /internal/lifecycle/forget` | Same dedicated shared secret | Same body; after successful account deletion, confirms removal then erases personal mappings; 204 success, 503 retry |
 | `POST /internal/lifecycle/restore` | Same dedicated shared secret | Same body; clears local denial, 204; current UserService policy still controls admission |
-| `POST /internal/lifecycle/webhook` | Official LiveKit signed webhook with raw-body digest verification | Handles participant joins; removes mapped denied/nonactive participants, 503 on unconfirmed effects or unknown mappings |
+| `POST /internal/lifecycle/webhook` | Official LiveKit signed webhook with raw-body digest verification | Handles participant joins, departures and room completion; removes mapped denied/nonactive participants, 503 on unconfirmed effects or unknown mappings |
 
 The outbound policy is `POST /internal/matrixrtc/media-access` on UserService,
 with `x-matrixrtc-lifecycle-token` and `{ "matrixUserId": "@person:homeserver" }`.
@@ -35,8 +35,19 @@ Required enabled-mode configuration:
 Secrets are read from mounted files. They, participant JWTs and raw webhook
 bodies are not logged or stored. Redis stores Matrix IDs and opaque participant
 identities; restrict access and use persistent storage with no eviction for this
-namespace. Mappings remain while the account exists, because LiveKit refreshes JWTs while
-clients remain connected. After successful account deletion, UserService must
+namespace. Active participants retain their mappings even after their original
+JWT expiry because LiveKit refreshes connected clients' tokens. A verified signed
+`participant_left` or `room_finished` event schedules cleanup only after an SFU
+`GetParticipant` lookup confirms absence. The bounded periodic registry scan also
+observes absence, so a lost departure webhook cannot retain a historical mapping
+forever. Cleanup becomes eligible at the later of the greatest verified issued
+JWT expiry and 24 hours after confirmed absence. It rechecks actual absence before
+erasing the entry; transport failures retain it. New registration or a signed
+join cancels the deadline and changes the record version, fencing cleanup already
+in flight. Unknown legacy records without a verified expiry are retained until
+reissued or confirmed account deletion. Cleanup retains only the same bounded
+hashed late-arrival marker described below; an old unregistered JWT must obtain
+fresh authorized issuance to rejoin. After successful account deletion, UserService must
 call `forget`: raw Matrix ID, room/subject mappings, user index and denial entries
 are removed atomically per identity. Only SHA-256(room, subject) security markers
 remain for 24 hours, with no raw identifiers; retries do not extend their TTL.
@@ -47,8 +58,9 @@ All in-flight signaling timeouts must be below 24 hours (Helm uses 3600 seconds)
 Manual deletion paths are covered by periodic registry garbage collection:
 every minute, at most 100 registry entries are checked against the authenticated
 policy. HSCAN overflow entries are carried into later batches. Only confirmed
-410 triggers removal of that known subject and personal mapping cleanup; 403,
-authority outages, and incomplete remote removal retain mappings for retry.
+410 triggers immediate removal of that known subject and personal mapping cleanup.
+Other definitive policy responses use the confirmed-departure retention rules above;
+authority outages and incomplete remote removal retain mappings for retry.
 This worker runs independently from five-second revocation reconciliation.
 Unlike explicit lifecycle completion, GC may erase an already-deleted subject's
 verified-absent mappings even while unrelated unknown participants exist; it
@@ -70,7 +82,8 @@ participants to detect missing mappings. A missing mapping produces
 people. Other unconfirmed remote effects return `MEDIA_REVOCATION_UNCONFIRMED`.
 UserService must retain pending lifecycle work on either response.
 
-The gateway continuously reconciles denied identities every five seconds. Signed
+The gateway continuously reconciles denied identities every five seconds, with
+one SFU room inventory per pass regardless of the number of denied identities. Signed
 join webhooks handle joins that were in flight during revocation. A restart
 reloads the durable denial set. This is a retryable network workflow, not an
 atomic transaction across UserService, Redis and LiveKit. A 204 confirms observed

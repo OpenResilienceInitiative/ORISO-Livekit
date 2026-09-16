@@ -1,6 +1,13 @@
 const express = require('express');
 const helmet = require('helmet');
 const { readFileSync } = require('node:fs');
+const { createLifecycleFromEnvironment } = require('./lifecycle');
+let lifecycle;
+const lifecycleRouter = express.Router();
+const lifecycleReady = createLifecycleFromEnvironment().then((value) => {
+	lifecycle = value;
+	if (lifecycle) lifecycle.mount(lifecycleRouter);
+});
 
 const PORT = Number.parseInt(process.env.PORT || '3010', 10);
 const MATRIX_SERVER_NAME = process.env.MATRIX_SERVER_NAME?.trim();
@@ -216,6 +223,7 @@ app.use(
 		contentSecurityPolicy: { directives: { defaultSrc: ["'none'"] } }
 	})
 );
+app.use(lifecycleRouter);
 app.use(express.json({ limit: '16kb', strict: true }));
 
 app.get('/health', (_req, res) => {
@@ -318,6 +326,7 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		return res.status(401).json({ error: 'unauthorized' });
 	}
 
+	req.verifiedMatrixUserId = matrixUserId;
 	const joinedMembersUrl = new URL(
 		`/_matrix/client/v3/rooms/${encodeURIComponent(room)}/joined_members`,
 		CLIENT_BASE_URL
@@ -487,6 +496,17 @@ async function proxyToAuthorizationService(req, res, upstreamPath) {
 		return res.status(502).json({ error: 'authorization service unavailable' });
 	}
 	clearTimeout(req.authorizationDeadlineTimer);
+	if (
+		lifecycle && upstreamResponse.ok &&
+		(upstreamPath === '/get_token' || upstreamPath === '/sfu/get')
+	) {
+		try {
+			const issued = JSON.parse(responseBody);
+			await lifecycle.registerIssued(issued.jwt, req.verifiedMatrixUserId);
+		} catch {
+			return res.status(503).json({ error: 'authorization unavailable' });
+		}
+	}
 	res.status(upstreamResponse.status);
 	const contentType = upstreamResponse.headers.get('content-type');
 	if (contentType) res.type(contentType);
@@ -513,6 +533,17 @@ app.use((error, _req, res, next) => {
 	return next(error);
 });
 
-app.listen(PORT, () => {
-	console.log(`MatrixRTC authorization policy gateway listening on port ${PORT}`);
+lifecycleReady.then(() => {
+	const server = app.listen(PORT, () => {
+		console.log(`MatrixRTC authorization policy gateway listening on port ${PORT}`);
+	});
+	process.once('SIGTERM', () => {
+		server.close(async () => {
+			if (lifecycle) await lifecycle.close();
+			process.exit(0);
+		});
+	});
+}).catch(() => {
+	console.error('Lifecycle configuration or storage unavailable');
+	process.exit(1);
 });

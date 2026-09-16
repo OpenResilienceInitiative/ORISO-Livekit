@@ -50,7 +50,7 @@ async function createLifecycle(config) {
       throw new Error("Invalid participant grant");
     return c;
   }
-  async function active(matrixUserId) {
+  async function policyStatus(matrixUserId) {
     const r = await fetch(config.policyUrl, {
       method: "POST",
       headers: {
@@ -60,9 +60,11 @@ async function createLifecycle(config) {
       body: JSON.stringify({ matrixUserId }),
       signal: AbortSignal.timeout(3000),
     });
-    if (r.status === 204) return true;
-    if (r.status === 403) return false;
+    if ([204, 403, 410].includes(r.status)) return r.status;
     throw new Error("Lifecycle policy unavailable");
+  }
+  async function active(matrixUserId) {
+    return (await policyStatus(matrixUserId)) === 204;
   }
   async function registerIssued(jwt, matrixUserId) {
     if (typeof matrixUserId !== "string" || !matrixUserId.startsWith("@"))
@@ -107,18 +109,28 @@ async function createLifecycle(config) {
     await redis.sAdd(prefix + "denied", matrixUserIds);
     await removeDenied(matrixUserIds);
   }
-  async function removeDenied(matrixUserIds) {
+  async function removeKnown(matrixUserIds, requireDenied = true) {
     for (const matrixUserId of matrixUserIds) {
-      if (!(await redis.sIsMember(prefix + "denied", matrixUserId))) continue;
+      if (
+        requireDenied &&
+        !(await redis.sIsMember(prefix + "denied", matrixUserId))
+      )
+        continue;
       for (const id of await redis.sMembers(
         prefix + "user:" + key(matrixUserId, ""),
       )) {
         const raw = await redis.hGet(prefix + "participants", id);
         if (!raw) throw new Error("Missing participant mapping");
-        if (await redis.sIsMember(prefix + "denied", matrixUserId))
+        if (
+          !requireDenied ||
+          (await redis.sIsMember(prefix + "denied", matrixUserId))
+        )
           await remove(JSON.parse(raw));
       }
     }
+  }
+  async function removeDenied(matrixUserIds) {
+    await removeKnown(matrixUserIds);
     await checkUnmapped();
   }
   async function checkUnmapped() {
@@ -140,6 +152,9 @@ async function createLifecycle(config) {
   }
   async function forget(matrixUserIds) {
     await revoke(matrixUserIds);
+    await eraseMappings(matrixUserIds);
+  }
+  async function eraseMappings(matrixUserIds) {
     for (const matrixUserId of matrixUserIds) {
       await redis.eval(
         `local ids=redis.call('SMEMBERS',KEYS[1]);
@@ -286,7 +301,44 @@ async function createLifecycle(config) {
     });
   }
   let stopped = false,
-    running = null;
+    running = null,
+    gcRunning = null;
+  let gcCursor = "0",
+    gcPending = [];
+  const gcBatchSize = config.gcBatchSize || 100;
+  async function collectDeleted() {
+    if (gcPending.length === 0) {
+      const page = await redis.hScan(prefix + "participants", gcCursor, {
+        COUNT: gcBatchSize,
+      });
+      gcCursor = page.cursor;
+      gcPending = page.entries;
+    }
+    const batch = gcPending.splice(0, gcBatchSize);
+    const seen = new Set();
+    for (const entry of batch) {
+      if (stopped) return;
+      try {
+        const record = JSON.parse(entry.value);
+        if (seen.has(record.matrixUserId)) continue;
+        seen.add(record.matrixUserId);
+        if ((await policyStatus(record.matrixUserId)) !== 410) continue;
+        await removeKnown([record.matrixUserId], false);
+        await eraseMappings([record.matrixUserId]);
+      } catch {
+        /* Outages and incomplete removal retain personal mappings for a later retry. */
+      }
+    }
+  }
+  const gcTimer = setInterval(() => {
+    if (!stopped && !gcRunning)
+      gcRunning = collectDeleted()
+        .catch(() => {})
+        .finally(() => {
+          gcRunning = null;
+        });
+  }, config.gcIntervalMs || 60000);
+  gcTimer.unref();
   async function reconcile() {
     try {
       await checkUnmapped();
@@ -322,7 +374,9 @@ async function createLifecycle(config) {
       if (stopped) return;
       stopped = true;
       clearInterval(timer);
+      clearInterval(gcTimer);
       if (running) await running;
+      if (gcRunning) await gcRunning;
       if (redis.isReady) await redis.quit();
       else redis.destroy();
     },

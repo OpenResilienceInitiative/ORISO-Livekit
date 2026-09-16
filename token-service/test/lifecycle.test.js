@@ -6,18 +6,30 @@ const { randomUUID } = require("node:crypto");
 const { AccessToken } = require("livekit-server-sdk");
 const { createLifecycle } = require("../lifecycle");
 
-async function fixture(t) {
+async function fixture(t, overrides = {}) {
   const state = {
     active: true,
     present: true,
     removeFails: false,
     removals: 0,
+    failedRemovals: 0,
     policyFails: false,
     unknown: false,
+    deleted: false,
+    policyCalls: 0,
   };
   const external = createServer(async (req, res) => {
     if (req.url === "/policy") {
-      res.writeHead(state.policyFails ? 503 : state.active ? 204 : 403);
+      state.policyCalls++;
+      res.writeHead(
+        state.policyFails
+          ? 503
+          : state.deleted
+            ? 410
+            : state.active
+              ? 204
+              : 403,
+      );
       res.end();
       return;
     }
@@ -44,6 +56,7 @@ async function fixture(t) {
       state.removals++;
       if (state.blockRemoval) await state.blockRemoval();
       if (state.removeFails) {
+        state.failedRemovals++;
         res.writeHead(503);
         res.end(JSON.stringify({ code: "unavailable", msg: "retry" }));
         return;
@@ -78,6 +91,7 @@ async function fixture(t) {
     policyUrl,
     livekitUrl: new URL(policyUrl).origin,
     reconcileIntervalMs: 50,
+    ...overrides,
   };
   const lifecycle = await createLifecycle(config);
   const app = express();
@@ -86,7 +100,10 @@ async function fixture(t) {
   // Token delivery boundary: registration must finish before a token becomes observable.
   app.post("/issue", async (req, res) => {
     try {
-      await lifecycle.registerIssued(req.body.jwt, "@alice:matrix.test");
+      await lifecycle.registerIssued(
+        req.body.jwt,
+        req.body.matrixUserId || "@alice:matrix.test",
+      );
       res.json({ jwt: req.body.jwt });
     } catch {
       res.sendStatus(503);
@@ -488,4 +505,88 @@ test("conflicting query and header tokens cannot authorize a different SFU parti
     },
   });
   assert.equal(r.status, 403);
+});
+
+test("periodic GC retains mappings on403/outage and forgets only confirmed410 despite unrelated unknown calls", async (t) => {
+  const f = await fixture(t, { gcIntervalMs: 30, gcBatchSize: 1 });
+  await fetch(f.url + "/issue", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jwt: f.jwt }),
+  });
+  async function gcPass() {
+    const before = f.state.policyCalls;
+    for (let i = 0; i < 40 && f.state.policyCalls === before; i++)
+      await new Promise((r) => setTimeout(r, 20));
+    assert.ok(f.state.policyCalls > before);
+  }
+  const admit = () =>
+    fetch(f.url + "/internal/lifecycle/admit", {
+      headers: { "x-original-uri": "/rtc?access_token=" + f.jwt },
+    });
+  f.state.active = false;
+  await gcPass();
+  f.state.active = true;
+  assert.equal((await admit()).status, 204);
+  f.state.policyFails = true;
+  await gcPass();
+  f.state.policyFails = false;
+  assert.equal((await admit()).status, 204);
+  f.state.deleted = true;
+  f.state.unknown = true;
+  f.state.removeFails = true;
+  for (let i = 0; i < 50 && f.state.failedRemovals === 0; i++)
+    await new Promise((r) => setTimeout(r, 20));
+  assert.ok(f.state.failedRemovals > 0);
+  assert.equal(f.state.present, true);
+  f.state.removeFails = false;
+  for (let i = 0; i < 50 && f.state.present; i++)
+    await new Promise((r) => setTimeout(r, 20));
+  assert.equal(f.state.present, false);
+  assert.equal(f.state.unknown, true);
+  assert.equal((await admit()).status, 403);
+  const redis = require("redis").createClient({ url: f.config.redisUrl });
+  await redis.connect();
+  try {
+    const keys = await redis.keys(
+      "matrixrtc:lifecycle:" + f.config.namespace + ":*",
+    );
+    assert.equal(keys.length, 1);
+    assert.match(keys[0], /:forgotten:/);
+  } finally {
+    await redis.quit();
+  }
+});
+
+test("registry GC honors per-pass batch size and carries remaining HSCAN entries into later passes", async (t) => {
+  const f = await fixture(t, { gcIntervalMs: 250, gcBatchSize: 1 });
+  for (const name of ["one", "two", "three"]) {
+    const token = new AccessToken(
+      "test-key",
+      "test-secret-at-least-32-characters",
+      { identity: name, ttl: "1h" },
+    );
+    token.addGrant({ roomJoin: true, room: "room-one" });
+    assert.equal(
+      (
+        await fetch(f.url + "/issue", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jwt: await token.toJwt(),
+            matrixUserId: "@" + name + ":matrix.test",
+          }),
+        })
+      ).status,
+      200,
+    );
+  }
+  f.state.active = false;
+  const before = f.state.policyCalls;
+  for (let i = 0; i < 100 && f.state.policyCalls === before; i++)
+    await new Promise((r) => setTimeout(r, 5));
+  assert.equal(f.state.policyCalls - before, 1);
+  for (let i = 0; i < 100 && f.state.policyCalls === before + 1; i++)
+    await new Promise((r) => setTimeout(r, 5));
+  assert.equal(f.state.policyCalls - before, 2);
 });

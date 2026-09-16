@@ -19,7 +19,9 @@ The existing `matrixrtc-auth-policy-gateway:3010` owns these internal routes:
 
 The outbound policy is `POST /internal/matrixrtc/media-access` on UserService,
 with `x-matrixrtc-lifecycle-token` and `{ "matrixUserId": "@person:homeserver" }`.
-Only HTTP 204 means ACTIVE. HTTP 403 denies. Every other result fails closed.
+Only HTTP 204 means ACTIVE. HTTP 403 means blocked or uncertain; HTTP 410 means
+the authenticated authority has confirmed the identity binding is gone or its
+policy is terminal DELETED. Both deny admission. Every other result fails closed.
 No policy lookup uses a user-supplied destination.
 
 Required enabled-mode configuration:
@@ -42,6 +44,15 @@ Signed webhooks and periodic actual-participant inventory remove late arrivals
 matching these markers even if a webhook was lost. Unknown old JWTs remain
 inadmissible after the markers expire because they have no registry entry.
 All in-flight signaling timeouts must be below 24 hours (Helm uses 3600 seconds).
+Manual deletion paths are covered by periodic registry garbage collection:
+every minute, at most 100 registry entries are checked against the authenticated
+policy. HSCAN overflow entries are carried into later batches. Only confirmed
+410 triggers removal of that known subject and personal mapping cleanup; 403,
+authority outages, and incomplete remote removal retain mappings for retry.
+This worker runs independently from five-second revocation reconciliation.
+Unlike explicit lifecycle completion, GC may erase an already-deleted subject's
+verified-absent mappings even while unrelated unknown participants exist; it
+never disconnects those unrelated participants or declares core work complete.
 Do not clear this namespace during active calls.
 
 ## Ordering and retry semantics

@@ -83,6 +83,34 @@ jobs:
         with:
           node_version: "22"
 
+      # Scan before publishing, not after. Pushing first left a vulnerable
+      # image in ghcr under a release tag whenever the gate fired, and a
+      # release tag is exactly what an operator is invited to trust.
+      # linux/amd64 only: `docker load` cannot take a multi-platform manifest.
+      # The publishing build below still covers both platforms and hits the
+      # gha cache for the layers this pass already produced.
+      - name: Build the policy gateway for scanning
+        id: policy_scan_build
+        uses: docker/build-push-action@v7
+        with:
+          context: token-service
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: policy-release-scan:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Reject fixable policy gateway vulnerabilities before publishing
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.policy_scan_build.outputs.imageid }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
       - name: Build and push policy gateway image
         id: policy_image
         uses: docker/build-push-action@v7
@@ -100,22 +128,40 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Reject fixable policy gateway vulnerabilities
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.POLICY_GATEWAY_IMAGE_NAME }}@${{ steps.policy_image.outputs.digest }}
-          format: table
-          exit-code: "1"
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
-
       - name: Sign and publish policy gateway provenance
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.1.0
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.POLICY_GATEWAY_IMAGE_NAME }}
           subject-digest: ${{ steps.policy_image.outputs.digest }}
           push-to-registry: true
+
+      # Scan before publishing, not after. Pushing first left a vulnerable
+      # image in ghcr under a release tag whenever the gate fired, and a
+      # release tag is exactly what an operator is invited to trust.
+      # linux/amd64 only: `docker load` cannot take a multi-platform manifest.
+      # The publishing build below still covers both platforms and hits the
+      # gha cache for the layers this pass already produced.
+      - name: Build the authorization service for scanning
+        id: issuer_scan_build
+        uses: docker/build-push-action@v7
+        with:
+          context: authorization-service
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: issuer-release-scan:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Reject fixable authorization service vulnerabilities before publishing
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.issuer_scan_build.outputs.imageid }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
 
       - name: Build and push authorization service image
         id: issuer_image
@@ -133,16 +179,6 @@ jobs:
             org.opencontainers.image.version=${{ env.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Reject fixable authorization service vulnerabilities
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.AUTHORIZATION_SERVICE_IMAGE_NAME }}@${{ steps.issuer_image.outputs.digest }}
-          format: table
-          exit-code: "1"
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
 
       - name: Sign and publish authorization service provenance
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.1.0

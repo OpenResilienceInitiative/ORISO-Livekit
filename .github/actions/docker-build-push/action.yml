@@ -19,11 +19,27 @@ inputs:
     description: Comma-separated OCI target platforms
     required: false
     default: linux/amd64,linux/arm64
+  load:
+    description: >-
+      Build into the runner's Docker daemon instead of publishing, so the image
+      can be scanned before it exists in a registry. Forces a single platform:
+      `docker load` cannot accept a multi-platform manifest.
+    required: false
+    default: 'false'
 
 outputs:
   digest:
     description: Immutable multi-platform image digest
     value: ${{ steps.build.outputs.digest }}
+  local_tag:
+    description: Tag of the locally loaded image. Set only when `load` is true.
+    value: ${{ steps.local.outputs.tag }}
+  local_image_id:
+    description: >-
+      Content-addressed id of the locally loaded image. `digest` is only set
+      when publishing, so this is the immutable handle for scanning an image
+      that has deliberately not been pushed yet.
+    value: ${{ steps.build.outputs.imageid }}
 
 runs:
   using: 'composite'
@@ -53,16 +69,26 @@ runs:
         type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
         type=raw,value=pre-dev,enable=${{ github.ref == 'refs/heads/pre-dev' }}
 
+  - name: Name the local scan image
+    if: ${{ inputs.load == 'true' }}
+    id: local
+    shell: bash
+    run: echo "tag=${{ inputs.image_name }}:scan-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
   - name: Build and Push Docker image
     id: build
     uses: docker/build-push-action@v7
     with:
       context: ${{ inputs.context_dir }}
-      platforms: ${{ inputs.platforms }}
+      # `load` builds one architecture into the local daemon; the publishing
+      # pass that follows still builds the full platform list, and the gha
+      # cache makes the shared layers a hit rather than a rebuild.
+      platforms: ${{ inputs.load == 'true' && 'linux/amd64' || inputs.platforms }}
       push: ${{ inputs.push_to_ghcr }}
+      load: ${{ inputs.load }}
       provenance: mode=max
       sbom: true
-      tags: ${{ steps.meta.outputs.tags }}
+      tags: ${{ inputs.load == 'true' && steps.local.outputs.tag || steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
       cache-from: type=gha
       cache-to: type=gha,mode=max

@@ -32,6 +32,31 @@ jobs:
       with:
         node_version: '22'
 
+    # Build into the runner's daemon and scan there, BEFORE anything reaches
+    # ghcr. The previous order pushed first and scanned after, so a HIGH finding
+    # left the vulnerable image published while the workflow went red — main was
+    # red in 11 of 23 runs, most recently on CVE-2026-84445 in a transitive
+    # gRPC-Go dependency, with no code change involved.
+    - name: Build the policy gateway for scanning
+      id: policy_scan_build
+      uses: ./.github/actions/docker-build-push
+      with:
+        push_to_ghcr: false
+        load: true
+        image_name: matrixrtc-auth-policy-gateway
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        context_dir: token-service
+
+    - name: Reject fixable policy gateway vulnerabilities before publishing
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        image-ref: ${{ steps.policy_scan_build.outputs.local_image_id }}
+        format: table
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: os,library
+        severity: CRITICAL,HIGH
+
     - name: Create and Publish Docker image
       id: policy_image
       uses: ./.github/actions/docker-build-push
@@ -41,22 +66,37 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: token-service
 
-    - name: Reject fixable policy-gateway image vulnerabilities
-      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-      with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-auth-policy-gateway@${{ steps.policy_image.outputs.digest }}
-        format: table
-        exit-code: '1'
-        ignore-unfixed: true
-        vuln-type: os,library
-        severity: CRITICAL,HIGH
-
     - name: Sign and publish policy-gateway provenance
       uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.1.0
       with:
         subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-auth-policy-gateway
         subject-digest: ${{ steps.policy_image.outputs.digest }}
         push-to-registry: true
+
+    # Build into the runner's daemon and scan there, BEFORE anything reaches
+    # ghcr. The previous order pushed first and scanned after, so a HIGH finding
+    # left the vulnerable image published while the workflow went red — main was
+    # red in 11 of 23 runs, most recently on CVE-2026-84445 in a transitive
+    # gRPC-Go dependency, with no code change involved.
+    - name: Build the authorization service for scanning
+      id: issuer_scan_build
+      uses: ./.github/actions/docker-build-push
+      with:
+        push_to_ghcr: false
+        load: true
+        image_name: matrixrtc-authorization-service
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        context_dir: authorization-service
+
+    - name: Reject fixable authorization service vulnerabilities before publishing
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        image-ref: ${{ steps.issuer_scan_build.outputs.local_image_id }}
+        format: table
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: os,library
+        severity: CRITICAL,HIGH
 
     - name: Create and Publish privacy-safe authorization service
       id: issuer_image
@@ -66,16 +106,6 @@ jobs:
         image_name: matrixrtc-authorization-service
         github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: authorization-service
-
-    - name: Reject fixable authorization-service image vulnerabilities
-      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-      with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/matrixrtc-authorization-service@${{ steps.issuer_image.outputs.digest }}
-        format: table
-        exit-code: '1'
-        ignore-unfixed: true
-        vuln-type: os,library
-        severity: CRITICAL,HIGH
 
     - name: Sign and publish authorization-service provenance
       uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.1.0

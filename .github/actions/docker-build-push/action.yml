@@ -34,6 +34,12 @@ outputs:
   local_tag:
     description: Tag of the locally loaded image. Set only when `load` is true.
     value: ${{ steps.local.outputs.tag }}
+  local_image_id:
+    description: >-
+      Content-addressed id of the locally loaded image. `digest` is only set
+      when publishing, so this is the immutable handle for scanning an image
+      that has deliberately not been pushed yet.
+    value: ${{ steps.build.outputs.imageid }}
 
 runs:
   using: 'composite'

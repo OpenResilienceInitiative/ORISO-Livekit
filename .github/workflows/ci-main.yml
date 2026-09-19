@@ -50,7 +50,7 @@ jobs:
     - name: Reject fixable policy gateway vulnerabilities before publishing
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: ${{ steps.policy_scan_build.outputs.local_tag }}
+        image-ref: ${{ steps.policy_scan_build.outputs.local_image_id }}
         format: table
         exit-code: '1'
         ignore-unfixed: true
@@ -91,7 +91,7 @@ jobs:
     - name: Reject fixable authorization service vulnerabilities before publishing
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: ${{ steps.issuer_scan_build.outputs.local_tag }}
+        image-ref: ${{ steps.issuer_scan_build.outputs.local_image_id }}
         format: table
         exit-code: '1'
         ignore-unfixed: true

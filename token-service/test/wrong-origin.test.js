@@ -10,9 +10,9 @@ const SERVICE_URL = 'http://127.0.0.1:3010';
 const SYNAPSE_URL = 'http://127.0.0.1:3020';
 const UPSTREAM_URL = 'http://127.0.0.1:3030';
 const CALL_POLICY_URL = 'http://127.0.0.1:3040/internal/matrixrtc/call-policy';
-const MATRIX_SERVER_NAME = 'matrix.oriso.org';
+const MATRIX_SERVER_NAME = 'matrix.example.org';
 const MATRIX_USER_ID = `@user:${MATRIX_SERVER_NAME}`;
-const ALLOWED_ORIGIN = 'https://call.oriso.org';
+const ALLOWED_ORIGIN = 'https://call.example.org';
 const MEMBERSHIP_TOKEN = 'test-membership-token';
 const CALL_POLICY_TOKEN = 'test-call-policy-token';
 const SOURCE_ROOM_ID = `!source:${MATRIX_SERVER_NAME}`;
@@ -185,7 +185,7 @@ before(async () => {
 		response.writeHead(200, { 'content-type': 'application/json' });
 		response.end(
 			JSON.stringify({
-				url: 'wss://livekit.oriso.org',
+				url: 'wss://livekit.example.org',
 				jwt: 'test-livekit-jwt'
 			})
 		);
@@ -256,10 +256,10 @@ test('rejects a token request from an origin outside the Element Call allowlist'
 			origin: 'https://attacker.example'
 		},
 		body: JSON.stringify({
-			room: '!call:matrix.oriso.org',
+			room: '!call:matrix.example.org',
 			openid_token: {
 				access_token: 'test-openid-token',
-				matrix_server_name: 'matrix.oriso.org'
+				matrix_server_name: 'matrix.example.org'
 			},
 			device_id: 'ORISO_WEB_TEST'
 		})
@@ -488,7 +488,7 @@ test('proxies an authorized joined member to the canonical JWT service', async (
 
 	assert.equal(response.status, 200);
 	assert.deepEqual(await response.json(), {
-		url: 'wss://livekit.oriso.org',
+		url: 'wss://livekit.example.org',
 		jwt: 'test-livekit-jwt'
 	});
 	assert.deepEqual(upstreamRequests.at(-1), {

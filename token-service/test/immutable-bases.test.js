@@ -35,11 +35,19 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 
 	assert.match(
 		dockerfile,
-		/golang:1\.26\.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2/
+		/golang:1\.26\.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83/
 	);
+	// 1.83.2, not 1.83.1: the latter fixes CVE-2026-84304 and leaves
+	// CVE-2026-84445 open.
 	assert.match(
 		dockerfile,
-		/go mod edit -require=google\.golang\.org\/grpc@v1\.82\.1/
+		/go mod edit -require=google\.golang\.org\/grpc@v1\.83\.2/
+	);
+	// CVE-2026-56854, SSH authentication bypass. Arrives transitively, so the
+	// override is the only thing holding the floor.
+	assert.match(
+		dockerfile,
+		/go mod edit -require=golang\.org\/x\/crypto@v0\.55\.0/
 	);
 });
 

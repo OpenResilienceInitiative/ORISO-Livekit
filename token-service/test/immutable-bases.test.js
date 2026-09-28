@@ -81,10 +81,35 @@ test('release workflow publishes immutable multi-platform images with evidence',
 		mainWorkflow,
 		/actions\/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6/
 	);
-	assert.match(
-		mainWorkflow,
-		/image-ref: .*@\$\{\{ steps\..*\.outputs\.digest \}\}/
-	);
+	// Trivy must name the artifact by content, never by a tag: a tag can move
+	// between the build and the scan, and then the report describes something
+	// other than what ships. The scan now runs BEFORE the push, so the registry
+	// digest does not exist yet and the immutable handle is the loaded image's
+	// content id instead.
+	const scanRefs = mainWorkflow.match(/image-ref: \$\{\{ steps\.\S+ \}\}/g) ?? [];
+	assert.equal(scanRefs.length, 2);
+	for (const ref of scanRefs) {
+		assert.match(ref, /outputs\.(local_image_id|digest)\b/);
+	}
+
+	// Ordering is the point of the scan, and nothing checked it before: the
+	// workflow used to push and then scan, so a HIGH finding left the
+	// vulnerable image published and only turned the run red. Each scan must
+	// come before the publish of the image it covers.
+	for (const [scan, publish] of [
+		['policy_scan_build', 'policy_image'],
+		['issuer_scan_build', 'issuer_image']
+	]) {
+		const scanAt = mainWorkflow.indexOf(`steps.${scan}.outputs`);
+		const publishAt = mainWorkflow.indexOf(`id: ${publish}`);
+		assert.ok(scanAt > 0, `no scan step for ${scan}`);
+		assert.ok(publishAt > 0, `no publish step ${publish}`);
+		assert.ok(
+			scanAt < publishAt,
+			`${scan} must be scanned before ${publish} is published`
+		);
+	}
+
 	assert.equal(
 		(mainWorkflow.match(/subject-digest: \$\{\{ steps\./g) ?? []).length,
 		2

@@ -45,9 +45,34 @@ const parseAllowedOrigins = (value) => {
 	return origins;
 };
 
-const requireSecureMatrixUrl = (value, name) => {
+const requireConfigured = (value, name) => {
 	if (!value) throw new Error(`${name} must be configured`);
-	const url = new URL(value);
+	return value;
+};
+
+const parseAbsoluteUrl = (value, name) => {
+	let url;
+	try {
+		url = new URL(requireConfigured(value, name));
+	} catch (error) {
+		if (error.message.includes(name)) throw error;
+		throw new Error(`${name} must be an absolute URL`);
+	}
+	return url;
+};
+
+// In-cluster hops (JWT issuer, call policy) may use plain HTTP, but never a
+// relative or non-HTTP value that would resolve somewhere unintended.
+const requireHttpUrl = (value, name) => {
+	const url = parseAbsoluteUrl(value, name);
+	if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+		throw new Error(`${name} must use HTTP or HTTPS`);
+	}
+	return url;
+};
+
+const requireSecureMatrixUrl = (value, name) => {
+	const url = parseAbsoluteUrl(value, name);
 	const isLoopbackTestUrl =
 		url.protocol === 'http:' &&
 		(url.hostname === '127.0.0.1' || url.hostname === '::1') &&
@@ -64,15 +89,12 @@ const ALLOWED_ORIGINS = parseAllowedOrigins(
 if (ALLOWED_ORIGINS.size === 0) {
 	throw new Error('MATRIXRTC_ALLOWED_ORIGINS must be configured');
 }
-if (
-	!MATRIX_SERVER_NAME ||
-	!MATRIX_MEMBERSHIP_TOKEN_FILE ||
-	!MATRIXRTC_UPSTREAM_URL ||
-	!MATRIXRTC_CALL_POLICY_URL ||
-	!MATRIXRTC_CALL_POLICY_TOKEN_FILE
-) {
-	throw new Error('Matrix authorization configuration is incomplete');
-}
+requireConfigured(MATRIX_SERVER_NAME, 'MATRIX_SERVER_NAME');
+requireConfigured(MATRIX_MEMBERSHIP_TOKEN_FILE, 'MATRIX_MEMBERSHIP_TOKEN_FILE');
+requireConfigured(
+	MATRIXRTC_CALL_POLICY_TOKEN_FILE,
+	'MATRIXRTC_CALL_POLICY_TOKEN_FILE'
+);
 
 const FEDERATION_BASE_URL = requireSecureMatrixUrl(
 	MATRIX_FEDERATION_BASE_URL,
@@ -82,8 +104,14 @@ const CLIENT_BASE_URL = requireSecureMatrixUrl(
 	MATRIX_CLIENT_BASE_URL,
 	'MATRIX_CLIENT_BASE_URL'
 );
-const UPSTREAM_BASE_URL = new URL(MATRIXRTC_UPSTREAM_URL);
-const CALL_POLICY_URL = new URL(MATRIXRTC_CALL_POLICY_URL);
+const UPSTREAM_BASE_URL = requireHttpUrl(
+	MATRIXRTC_UPSTREAM_URL,
+	'MATRIXRTC_UPSTREAM_URL'
+);
+const CALL_POLICY_URL = requireHttpUrl(
+	MATRIXRTC_CALL_POLICY_URL,
+	'MATRIXRTC_CALL_POLICY_URL'
+);
 
 const MATRIX_MEMBERSHIP_TOKEN = readFileSync(
 	MATRIX_MEMBERSHIP_TOKEN_FILE,

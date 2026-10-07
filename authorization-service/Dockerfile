@@ -5,15 +5,17 @@ FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc
 ARG UPSTREAM_REVISION
 ARG UPSTREAM_ARCHIVE_SHA256
 WORKDIR /download
-RUN apk upgrade --no-cache libssl3 libcrypto3 \
-    && wget -qO source.tar.gz "https://github.com/element-hq/lk-jwt-service/archive/${UPSTREAM_REVISION}.tar.gz" \
+RUN wget -qO source.tar.gz "https://github.com/element-hq/lk-jwt-service/archive/${UPSTREAM_REVISION}.tar.gz" \
     && echo "${UPSTREAM_ARCHIVE_SHA256}  source.tar.gz" | sha256sum -c - \
     && mkdir /src \
     && tar -xzf source.tar.gz --strip-components=1 -C /src
 
+# Go 1.26.6 clears eight stdlib findings the image gate rejects, among them
+# CVE-2026-33818 (encoding/asn1 recursion DoS), CVE-2026-46600 and
+# CVE-2026-56853. The toolchain version is what Trivy reports as `stdlib`,
+# so it moves with the builder image.
 FROM --platform=${BUILDPLATFORM} golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS builder
-RUN apk upgrade --no-cache libssl3 libcrypto3 \
-    && apk add --no-cache patch
+RUN apk add --no-cache patch
 WORKDIR /src
 COPY --from=source /src /src
 COPY overrides/call_policy.patch /tmp/call_policy.patch
@@ -23,7 +25,13 @@ COPY overrides/call_policy_test.go ./call_policy_test.go
 COPY overrides/logging_test.go ./logging_test.go
 COPY overrides/federation_url_override.go ./federation_url_override.go
 COPY overrides/federation_url_override_test.go ./federation_url_override_test.go
-RUN go mod edit -require=google.golang.org/grpc@v1.83.1 \
+# Overrides for findings the image vulnerability gate rejects:
+#   grpc      1.83.2 — CVE-2026-84304 and CVE-2026-84445 (DoS via malformed RPC
+#                      requests). 1.83.1 fixes only the first of the two.
+#   x/crypto  0.55.0 — CVE-2026-56854, SSH authentication bypass through
+#                      unenforced source-address restrictions.
+#   x/text    0.39.0 — pre-existing override, unchanged.
+RUN go mod edit -require=google.golang.org/grpc@v1.83.2 \
     && go mod edit -require=golang.org/x/crypto@v0.55.0 \
     && go mod edit -require=golang.org/x/text@v0.39.0 \
     && go mod tidy \

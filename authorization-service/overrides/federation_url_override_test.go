@@ -11,9 +11,9 @@ import (
 )
 
 func TestFederationURLOverridePreservesLegacyServerName(t *testing.T) {
-	const serverName = "91.99.183.160"
+	const serverName = "203.0.113.10"
 	const accessToken = "test-openid-token"
-	const expectedUserID = "@user:91.99.183.160"
+	const expectedUserID = "@user:203.0.113.10"
 
 	authority := httptest.NewTLSServer(
 		http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -24,7 +24,7 @@ func TestFederationURLOverridePreservesLegacyServerName(t *testing.T) {
 				t.Fatal("OpenID token was not forwarded")
 			}
 			writer.Header().Set("content-type", "application/json")
-			_, _ = writer.Write([]byte(`{"sub":"@user:91.99.183.160"}`))
+			_, _ = writer.Write([]byte(`{"sub":"@user:203.0.113.10"}`))
 		}),
 	)
 	defer authority.Close()
@@ -67,7 +67,7 @@ func TestFederationURLOverridePreservesLegacyServerName(t *testing.T) {
 
 func TestFederationURLOverrideRejectsPlainHTTP(t *testing.T) {
 	if _, err := parseFederationURLOverrides(
-		"91.99.183.160=http://matrix-synapse:8009",
+		"203.0.113.10=http://matrix-synapse:8009",
 	); err == nil {
 		t.Fatal("plain HTTP override must be rejected")
 	}

@@ -1,0 +1,59 @@
+name: Scan published MatrixRTC images
+
+# A CVE is published on its own schedule, not on ours. Until now the only
+# scanner ran inside ci-main.yml, so a new finding in an already-published image
+# stayed invisible until somebody happened to push — and then arrived as a red
+# `main`, which reads like "you broke it" rather than "the world changed".
+#
+# This scans what is actually deployed and reports into Code Scanning instead of
+# failing. A finding here is a ticket, not a broken build: nothing in the repo
+# changed, so there is no pipeline to unbreak. The blocking gate stays in
+# ci-main.yml and release-image.yml, where it belongs — before a push.
+
+on:
+  schedule:
+    - cron: "20 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write # upload SARIF to Code Scanning
+
+concurrency:
+  group: published-image-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Scan ${{ matrix.image }}:${{ matrix.tag }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false # one image's findings must not hide another's
+      matrix:
+        image:
+          - matrixrtc-auth-policy-gateway
+          - matrixrtc-authorization-service
+        tag: [latest, dev]
+
+    steps:
+      - name: Scan the published image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/openresilienceinitiative/${{ matrix.image }}:${{ matrix.tag }}
+          format: sarif
+          output: trivy.sarif
+          # Report everything; the decision of what blocks a release is made by
+          # the pre-push gate, not here.
+          exit-code: "0"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH,MEDIUM
+
+      - name: Publish the findings to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+          # Without a distinct category each matrix leg overwrites the previous
+          # one's results and only the last image would ever be visible.
+          category: trivy-${{ matrix.image }}-${{ matrix.tag }}

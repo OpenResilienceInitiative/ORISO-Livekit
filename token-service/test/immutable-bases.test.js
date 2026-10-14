@@ -52,6 +52,12 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 		dockerfile,
 		/go mod edit -require=golang\.org\/x\/crypto@v0\.55\.0/
 	);
+	// CVE-2026-78669, HTTP/2 SETTINGS flood DoS. The toolchain fixes the stdlib
+	// copy only; the x/net module keeps its own vulnerable http2.
+	assert.match(
+		dockerfile,
+		/go mod edit -require=golang\.org\/x\/net@v0\.60\.0/
+	);
 });
 
 test('gateway and authorization images declare verifiable numeric non-root users', () => {

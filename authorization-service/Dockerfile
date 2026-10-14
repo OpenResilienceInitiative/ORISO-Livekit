@@ -10,11 +10,12 @@ RUN wget -qO source.tar.gz "https://github.com/element-hq/lk-jwt-service/archive
     && mkdir /src \
     && tar -xzf source.tar.gz --strip-components=1 -C /src
 
-# Go 1.26.6 clears eight stdlib findings the image gate rejects, among them
-# CVE-2026-33818 (encoding/asn1 recursion DoS), CVE-2026-46600 and
-# CVE-2026-56853. The toolchain version is what Trivy reports as `stdlib`,
-# so it moves with the builder image.
-FROM --platform=${BUILDPLATFORM} golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS builder
+# Go 1.26.9 clears the stdlib findings the image gate rejects. 1.26.6 was
+# rejected for CVE-2026-78667 (net/http Range-header DoS), CVE-2026-78669
+# (HTTP/2 SETTINGS DoS) and CVE-2026-97031 (crypto/tls ECH DoS), all fixed in
+# 1.26.9. The toolchain version is what Trivy reports as `stdlib`, so it moves
+# with the builder image.
+FROM --platform=${BUILDPLATFORM} golang:1.26.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS builder
 RUN apk add --no-cache patch
 WORKDIR /src
 COPY --from=source /src /src

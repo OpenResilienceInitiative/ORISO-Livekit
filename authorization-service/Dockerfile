@@ -31,9 +31,13 @@ COPY overrides/federation_url_override_test.go ./federation_url_override_test.go
 #                      requests). 1.83.1 fixes only the first of the two.
 #   x/crypto  0.55.0 — CVE-2026-56854, SSH authentication bypass through
 #                      unenforced source-address restrictions.
+#   x/net     0.60.0 — CVE-2026-78669, HTTP/2 SETTINGS flood DoS. The Go 1.26.9
+#                      toolchain fixes the stdlib copy; the module copy needs
+#                      its own floor.
 #   x/text    0.39.0 — pre-existing override, unchanged.
 RUN go mod edit -require=google.golang.org/grpc@v1.83.2 \
     && go mod edit -require=golang.org/x/crypto@v0.55.0 \
+    && go mod edit -require=golang.org/x/net@v0.60.0 \
     && go mod edit -require=golang.org/x/text@v0.39.0 \
     && go mod tidy \
     && go test ./...

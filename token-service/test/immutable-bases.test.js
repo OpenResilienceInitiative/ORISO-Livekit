@@ -76,8 +76,11 @@ test('release workflow publishes immutable multi-platform images with evidence',
 	);
 
 	assert.match(buildAction, /linux\/amd64,linux\/arm64/);
-	assert.match(buildAction, /provenance: mode=max/);
-	assert.match(buildAction, /sbom: true/);
+	assert.match(
+		buildAction,
+		/provenance: \$\{\{ inputs\.load == 'true' && 'false' \|\| 'mode=max' \}\}/,
+	);
+	assert.match(buildAction, /sbom: \$\{\{ inputs\.load != 'true' \}\}/);
 	assert.match(buildAction, /value: \$\{\{ steps\.build\.outputs\.digest \}\}/);
 	assert.match(mainWorkflow, /id-token: write/);
 	assert.match(mainWorkflow, /attestations: write/);

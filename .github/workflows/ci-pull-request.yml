@@ -37,3 +37,21 @@ jobs:
         image_name: matrixrtc-authorization-service
         github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: authorization-service
+
+    - name: Verify policy gateway loads for scanning
+      uses: ./.github/actions/docker-build-push
+      with:
+        push_to_ghcr: false
+        load: true
+        image_name: matrixrtc-auth-policy-gateway
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        context_dir: token-service
+
+    - name: Verify authorization service loads for scanning
+      uses: ./.github/actions/docker-build-push
+      with:
+        push_to_ghcr: false
+        load: true
+        image_name: matrixrtc-authorization-service
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        context_dir: authorization-service

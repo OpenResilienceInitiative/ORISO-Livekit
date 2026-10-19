@@ -86,8 +86,10 @@ runs:
       platforms: ${{ inputs.load == 'true' && 'linux/amd64' || inputs.platforms }}
       push: ${{ inputs.push_to_ghcr }}
       load: ${{ inputs.load }}
-      provenance: mode=max
-      sbom: true
+      # Attestations create a manifest list even for a single platform, which
+      # the runner's classic Docker image store cannot load for scanning.
+      provenance: ${{ inputs.load == 'true' && 'false' || 'mode=max' }}
+      sbom: ${{ inputs.load != 'true' }}
       tags: ${{ inputs.load == 'true' && steps.local.outputs.tag || steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
       cache-from: type=gha

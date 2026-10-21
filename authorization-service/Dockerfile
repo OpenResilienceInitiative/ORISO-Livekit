@@ -34,10 +34,13 @@ COPY overrides/federation_url_override_test.go ./federation_url_override_test.go
 #   x/net     0.60.0 — CVE-2026-78669, HTTP/2 SETTINGS flood DoS. The Go 1.26.9
 #                      toolchain fixes the stdlib copy; the module copy needs
 #                      its own floor.
+#   compress  1.18.7 — CVE-2026-63209, arrives transitively through the gRPC
+#                      and Matrix client stacks.
 #   x/text    0.39.0 — pre-existing override, unchanged.
 RUN go mod edit -require=google.golang.org/grpc@v1.83.2 \
     && go mod edit -require=golang.org/x/crypto@v0.55.0 \
     && go mod edit -require=golang.org/x/net@v0.60.0 \
+    && go mod edit -require=github.com/klauspost/compress@v1.18.7 \
     && go mod edit -require=golang.org/x/text@v0.39.0 \
     && go mod tidy \
     && go test ./...

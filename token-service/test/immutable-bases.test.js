@@ -58,6 +58,12 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 		dockerfile,
 		/go mod edit -require=golang\.org\/x\/net@v0\.60\.0/
 	);
+	// CVE-2026-63209. Transitive through the gRPC and Matrix client stacks, so
+	// the override is the only thing holding the floor.
+	assert.match(
+		dockerfile,
+		/go mod edit -require=github\.com\/klauspost\/compress@v1\.18\.7/
+	);
 });
 
 test('gateway and authorization images declare verifiable numeric non-root users', () => {

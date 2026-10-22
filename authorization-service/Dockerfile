@@ -10,12 +10,11 @@ RUN wget -qO source.tar.gz "https://github.com/element-hq/lk-jwt-service/archive
     && mkdir /src \
     && tar -xzf source.tar.gz --strip-components=1 -C /src
 
-# Go 1.26.9 clears the stdlib findings the image gate rejects. 1.26.6 was
-# rejected for CVE-2026-78667 (net/http Range-header DoS), CVE-2026-78669
-# (HTTP/2 SETTINGS DoS) and CVE-2026-97031 (crypto/tls ECH DoS), all fixed in
-# 1.26.9. The toolchain version is what Trivy reports as `stdlib`, so it moves
+# Go 1.26.10 clears the stdlib findings the image gate rejects. 1.26.9 was
+# rejected for CVE-2026-111943 (crypto/x509), fixed in 1.26.10; 1.26.6 before
+# it for CVE-2026-78667, CVE-2026-78669 and CVE-2026-97031. The toolchain version is what Trivy reports as `stdlib`, so it moves
 # with the builder image.
-FROM --platform=${BUILDPLATFORM} golang:1.26.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS builder
+FROM --platform=${BUILDPLATFORM} golang:1.26.10-alpine@sha256:5cb67f19c5e7994dcb80c074f7cfca8aeeada45bbdca035f73df269cefdcce61 AS builder
 RUN apk add --no-cache patch
 WORKDIR /src
 COPY --from=source /src /src
@@ -34,10 +33,13 @@ COPY overrides/federation_url_override_test.go ./federation_url_override_test.go
 #   x/net     0.60.0 — CVE-2026-78669, HTTP/2 SETTINGS flood DoS. The Go 1.26.9
 #                      toolchain fixes the stdlib copy; the module copy needs
 #                      its own floor.
+#   compress  1.18.7 — CVE-2026-63209, arrives transitively through the gRPC
+#                      and Matrix client stacks.
 #   x/text    0.39.0 — pre-existing override, unchanged.
 RUN go mod edit -require=google.golang.org/grpc@v1.83.2 \
     && go mod edit -require=golang.org/x/crypto@v0.55.0 \
     && go mod edit -require=golang.org/x/net@v0.60.0 \
+    && go mod edit -require=github.com/klauspost/compress@v1.18.7 \
     && go mod edit -require=golang.org/x/text@v0.39.0 \
     && go mod tidy \
     && go test ./...

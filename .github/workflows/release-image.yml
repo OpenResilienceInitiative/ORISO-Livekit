@@ -69,8 +69,7 @@ jobs:
 
           for image in "${POLICY_GATEWAY_IMAGE}" "${AUTHORIZATION_SERVICE_IMAGE}"; do
             if docker buildx imagetools inspect "${image}" >/dev/null 2>&1; then
-              echo "::error::Image tag ${image} already exists. Choose a new version."
-              exit 1
+              echo "::warning::Image tag ${image} already exists and will be overwritten by this release rerun."
             fi
           done
 

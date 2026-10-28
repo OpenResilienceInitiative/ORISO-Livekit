@@ -187,6 +187,8 @@ const sanitizeMember = (member) => ({
 	claimed_device_id: member.claimed_device_id
 });
 
+// Forwards only the route's canonical room field (room for /sfu/get, room_id
+// otherwise); the other field never reaches the JWT service.
 const sanitizeUpstreamBody = (path, body) => {
 	if (path === '/sfu/get') {
 		return {
@@ -278,10 +280,22 @@ app.use('/livekit/jwt', (req, res, next) => {
 
 app.use('/livekit/jwt', createRateLimiter());
 
+// One canonical room field per route: the room checked below is exactly the
+// room forwarded upstream and sent as callRoomId.
+const ROOM_FIELD_BY_PATH = {
+	'/sfu/get': 'room',
+	'/get_token': 'room_id',
+	'/delegate_delayed_leave': 'room_id'
+};
+
 app.use('/livekit/jwt', async (req, res, next) => {
-	const room = req.body?.room || req.body?.room_id;
+	const roomField = ROOM_FIELD_BY_PATH[req.path];
+	const otherRoomField = roomField === 'room' ? 'room_id' : 'room';
+	const room = roomField ? req.body?.[roomField] : undefined;
 	const openIdToken = req.body?.openid_token;
 	if (
+		!roomField ||
+		(req.body && Object.hasOwn(req.body, otherRoomField)) ||
 		typeof room !== 'string' ||
 		!ROOM_ID_PATTERN.test(room) ||
 		typeof openIdToken?.access_token !== 'string' ||
@@ -408,6 +422,9 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		clearTimeout(deadlineTimer);
 		return res.status(403).json({ error: 'forbidden' });
 	}
+
+	// Forward exactly the room that was checked.
+	req.body[roomField] = room;
 
 	if (req.path === '/delegate_delayed_leave') {
 		return next();

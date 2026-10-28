@@ -456,7 +456,9 @@ app.use('/livekit/jwt', async (req, res, next) => {
 				'content-type': 'application/json',
 				'x-matrixrtc-policy-token': MATRIXRTC_CALL_POLICY_TOKEN
 			},
-			body: JSON.stringify({ sourceRoomId, matrixUserId }),
+			// callRoomId: UserService#1485 admits a call guest only to this call
+			// room; an older UserService ignores the extra field.
+			body: JSON.stringify({ sourceRoomId, matrixUserId, callRoomId: room }),
 			signal: deadline.signal
 		});
 	} catch {

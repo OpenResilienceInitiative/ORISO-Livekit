@@ -30,6 +30,7 @@ let callPolicy;
 let tempDirectory;
 let currentCallPolicy = { audioAllowed: true, videoAllowed: true };
 const upstreamRequests = [];
+const callPolicyRequests = [];
 
 const listen = (server, port) =>
 	new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
@@ -194,6 +195,7 @@ before(async () => {
 		const chunks = [];
 		for await (const chunk of request) chunks.push(chunk);
 		const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+		callPolicyRequests.push(body);
 		if (
 			request.headers['x-matrixrtc-policy-token'] !== CALL_POLICY_TOKEN ||
 			body.sourceRoomId !== SOURCE_ROOM_ID ||
@@ -506,6 +508,49 @@ test('proxies an authorized joined member to the canonical JWT service', async (
 		}
 	});
 });
+
+for (const [path, roomField] of [
+	['/sfu/get', 'room'],
+	['/get_token', 'room_id']
+]) {
+	test(`sends the call room as callRoomId in the call-policy request (${path})`, async () => {
+		// UserService#1485 admits a call guest only to this exact call room.
+		const callRoomId = `!allowed:${MATRIX_SERVER_NAME}`;
+		const previousPolicyRequestCount = callPolicyRequests.length;
+		const response = await fetch(`${SERVICE_URL}/livekit/jwt${path}`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				origin: ALLOWED_ORIGIN
+			},
+			body: JSON.stringify({
+				[roomField]: callRoomId,
+				openid_token: {
+					access_token: 'valid-openid-token',
+					matrix_server_name: MATRIX_SERVER_NAME
+				},
+				...(path === '/get_token'
+					? {
+							slot_id: 'm.call#',
+							member: {
+								id: 'member-1',
+								claimed_user_id: MATRIX_USER_ID,
+								claimed_device_id: 'ORISO_WEB_TEST'
+							}
+						}
+					: { device_id: 'ORISO_WEB_TEST' })
+			})
+		});
+
+		assert.equal(response.status, 200);
+		assert.equal(callPolicyRequests.length, previousPolicyRequestCount + 1);
+		assert.deepEqual(callPolicyRequests.at(-1), {
+			sourceRoomId: SOURCE_ROOM_ID,
+			matrixUserId: MATRIX_USER_ID,
+			callRoomId
+		});
+	});
+}
 
 test('restricts an audio-only tenant grant to microphone publication', async () => {
 	const previousRequestCount = upstreamRequests.length;

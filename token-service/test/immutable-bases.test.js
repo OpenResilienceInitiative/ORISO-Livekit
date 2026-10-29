@@ -33,12 +33,13 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 		'utf8'
 	);
 
-	// 1.26.9, not 1.26.6: the latter leaves CVE-2026-78667 (net/http Range
+	// 1.26.10, not 1.26.9: the latter leaves CVE-2026-111943 (crypto/x509)
+	// open. Earlier, 1.26.6 left CVE-2026-78667 (net/http Range
 	// header), CVE-2026-78669 (HTTP/2 SETTINGS) and CVE-2026-97031 (crypto/tls
 	// ECH) open, and the image gate rejects all three.
 	assert.match(
 		dockerfile,
-		/golang:1\.26\.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade/
+		/golang:1\.26\.10-alpine@sha256:5cb67f19c5e7994dcb80c074f7cfca8aeeada45bbdca035f73df269cefdcce61/
 	);
 	// 1.83.2, not 1.83.1: the latter fixes CVE-2026-84304 and leaves
 	// CVE-2026-84445 open.
@@ -57,6 +58,12 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 	assert.match(
 		dockerfile,
 		/go mod edit -require=golang\.org\/x\/net@v0\.60\.0/
+	);
+	// CVE-2026-63209. Transitive through the gRPC and Matrix client stacks, so
+	// the override is the only thing holding the floor.
+	assert.match(
+		dockerfile,
+		/go mod edit -require=github\.com\/klauspost\/compress@v1\.18\.7/
 	);
 });
 
@@ -85,8 +92,11 @@ test('release workflow publishes immutable multi-platform images with evidence',
 	);
 
 	assert.match(buildAction, /linux\/amd64,linux\/arm64/);
-	assert.match(buildAction, /provenance: mode=max/);
-	assert.match(buildAction, /sbom: true/);
+	assert.match(
+		buildAction,
+		/provenance: \$\{\{ inputs\.load == 'true' && 'false' \|\| 'mode=max' \}\}/,
+	);
+	assert.match(buildAction, /sbom: \$\{\{ inputs\.load != 'true' \}\}/);
 	assert.match(buildAction, /value: \$\{\{ steps\.build\.outputs\.digest \}\}/);
 	assert.match(mainWorkflow, /id-token: write/);
 	assert.match(mainWorkflow, /attestations: write/);

@@ -43,6 +43,10 @@ jobs:
       with:
         push_to_ghcr: false
         load: true
+        # `docker load` cannot take a manifest list. release-image.yml passes
+        # this explicitly for the same reason; relying on the action to derive
+        # it from `load` has failed every CI - Main run since 2026-08-06.
+        platforms: linux/amd64
         image_name: matrixrtc-auth-policy-gateway
         github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: token-service
@@ -84,6 +88,10 @@ jobs:
       with:
         push_to_ghcr: false
         load: true
+        # `docker load` cannot take a manifest list. release-image.yml passes
+        # this explicitly for the same reason; relying on the action to derive
+        # it from `load` has failed every CI - Main run since 2026-08-06.
+        platforms: linux/amd64
         image_name: matrixrtc-authorization-service
         github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: authorization-service

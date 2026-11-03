@@ -30,6 +30,7 @@ let callPolicy;
 let tempDirectory;
 let currentCallPolicy = { audioAllowed: true, videoAllowed: true };
 const upstreamRequests = [];
+const callPolicyRequests = [];
 
 const listen = (server, port) =>
 	new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
@@ -194,6 +195,7 @@ before(async () => {
 		const chunks = [];
 		for await (const chunk of request) chunks.push(chunk);
 		const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+		callPolicyRequests.push(body);
 		if (
 			request.headers['x-matrixrtc-policy-token'] !== CALL_POLICY_TOKEN ||
 			body.sourceRoomId !== SOURCE_ROOM_ID ||
@@ -506,6 +508,112 @@ test('proxies an authorized joined member to the canonical JWT service', async (
 		}
 	});
 });
+
+for (const [path, roomField] of [
+	['/sfu/get', 'room'],
+	['/get_token', 'room_id']
+]) {
+	test(`sends the call room as callRoomId in the call-policy request (${path})`, async () => {
+		// UserService#1485 admits a call guest only to this exact call room.
+		const callRoomId = `!allowed:${MATRIX_SERVER_NAME}`;
+		const previousPolicyRequestCount = callPolicyRequests.length;
+		const response = await fetch(`${SERVICE_URL}/livekit/jwt${path}`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				origin: ALLOWED_ORIGIN
+			},
+			body: JSON.stringify({
+				[roomField]: callRoomId,
+				openid_token: {
+					access_token: 'valid-openid-token',
+					matrix_server_name: MATRIX_SERVER_NAME
+				},
+				...(path === '/get_token'
+					? {
+							slot_id: 'm.call#',
+							member: {
+								id: 'member-1',
+								claimed_user_id: MATRIX_USER_ID,
+								claimed_device_id: 'ORISO_WEB_TEST'
+							}
+						}
+					: { device_id: 'ORISO_WEB_TEST' })
+			})
+		});
+
+		assert.equal(response.status, 200);
+		assert.equal(callPolicyRequests.length, previousPolicyRequestCount + 1);
+		assert.deepEqual(callPolicyRequests.at(-1), {
+			sourceRoomId: SOURCE_ROOM_ID,
+			matrixUserId: MATRIX_USER_ID,
+			callRoomId
+		});
+		assert.equal(upstreamRequests.at(-1).body[roomField], callRoomId);
+	});
+}
+
+const tokenRequest = (path, roomFields) =>
+	fetch(`${SERVICE_URL}/livekit/jwt${path}`, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json', origin: ALLOWED_ORIGIN },
+		body: JSON.stringify({
+			...roomFields,
+			slot_id: 'm.call#',
+			openid_token: {
+				access_token: 'valid-openid-token',
+				matrix_server_name: MATRIX_SERVER_NAME
+			},
+			member: {
+				id: 'member-1',
+				claimed_user_id: MATRIX_USER_ID,
+				claimed_device_id: 'ORISO_WEB_TEST'
+			},
+			device_id: 'ORISO_WEB_TEST'
+		})
+	});
+
+const assertRejectedBeforeAnyCheck = async (path, roomFields) => {
+	const previousUpstreamCount = upstreamRequests.length;
+	const previousPolicyCount = callPolicyRequests.length;
+	const response = await tokenRequest(path, roomFields);
+	assert.equal(response.status, 403);
+	assert.equal(upstreamRequests.length, previousUpstreamCount);
+	assert.equal(callPolicyRequests.length, previousPolicyCount);
+};
+
+const ROOM_A = `!allowed:${MATRIX_SERVER_NAME}`;
+const ROOM_B = `!denied:${MATRIX_SERVER_NAME}`;
+
+for (const path of ['/sfu/get', '/get_token', '/delegate_delayed_leave']) {
+	test(`rejects a request that sets both room and room_id (${path})`, async () => {
+		await assertRejectedBeforeAnyCheck(path, { room: ROOM_A, room_id: ROOM_A });
+	});
+}
+
+for (const [path, wrongField] of [
+	['/sfu/get', 'room_id'],
+	['/get_token', 'room'],
+	['/delegate_delayed_leave', 'room']
+]) {
+	test(`rejects the wrong room field for the path (${path} with ${wrongField})`, async () => {
+		await assertRejectedBeforeAnyCheck(path, { [wrongField]: ROOM_A });
+	});
+}
+
+for (const [path, checkedField, forwardedField] of [
+	['/get_token', 'room', 'room_id'],
+	['/delegate_delayed_leave', 'room', 'room_id'],
+	['/sfu/get', 'room', 'room_id']
+]) {
+	test(`never checks room A and forwards room B (${path})`, async () => {
+		// Room A is one the caller may join; room B is not. The token must never be issued for B.
+		await assertRejectedBeforeAnyCheck(path, {
+			[checkedField]: ROOM_A,
+			[forwardedField]: ROOM_B
+		});
+	});
+}
 
 test('restricts an audio-only tenant grant to microphone publication', async () => {
 	const previousRequestCount = upstreamRequests.length;

@@ -2,6 +2,9 @@ const express = require('express');
 const helmet = require('helmet');
 const { readFileSync } = require('node:fs');
 const { createLifecycleFromEnvironment } = require('./lifecycle');
+const { createEvictionFromEnvironment } = require('./eviction');
+// Moderator removal from a running call; absent unless LiveKit is configured.
+const eviction = createEvictionFromEnvironment();
 let lifecycle;
 const lifecycleRouter = express.Router();
 const lifecycleReady = createLifecycleFromEnvironment().then((value) => {
@@ -255,6 +258,7 @@ app.use(
 );
 app.use(lifecycleRouter);
 app.use(express.json({ limit: '16kb', strict: true }));
+if (eviction) eviction.mount(app);
 
 app.get('/health', (_req, res) => {
 	res.json({ status: 'ok', service: 'matrixrtc-auth-policy-gateway' });

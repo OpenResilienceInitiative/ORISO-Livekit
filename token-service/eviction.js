@@ -12,6 +12,11 @@
 // a375b130, handler.go). The alias is ported below and pinned by the spec
 // test vector in test/eviction.test.js.
 //
+// Limits (need the lifecycle admit gate, MATRIXRTC_LIFECYCLE_ENABLED, to
+// close): a modified client could reconnect with its still-valid JWT (1 h),
+// and a participant that joined through `/get_token` has a hashed identity
+// this cannot match. The ORISO app leaves the call on the ban by itself.
+//
 // Independent of the account lifecycle module: it removes one person from
 // the given calls only, it does not deny them anywhere else.
 const { createHash, timingSafeEqual } = require("node:crypto");
@@ -52,9 +57,9 @@ function createEviction({ token, rooms }) {
       for (const { identity } of participants) {
         if (typeof identity !== "string" || !identity.startsWith(prefix))
           continue;
-        const deviceId = identity.slice(prefix.length);
-        // `@anna:hs:DEVICE` but not `@anna:hs.evil:X`: the rest is one device id.
-        if (!deviceId || deviceId.includes(":")) continue;
+        // `@anna:hs:` + any device id (which may itself contain ':'); the
+        // trailing ':' keeps `@anna:hs.evil:X` and `@annabel:hs:X` out.
+        if (identity.length === prefix.length) continue;
         try {
           await rooms.removeParticipant(room, identity);
         } catch (error) {

@@ -51,6 +51,8 @@ test("removes every device of the removed person from the call, nobody else", as
     [alias]: [
       "@anna:oriso.test:PHONE",
       "@anna:oriso.test:LAPTOP",
+      "@anna:oriso.test:DEV:ICE",
+      "@annabel:oriso.test:Y",
       "@anna:oriso.test.evil:X",
       "@bea:oriso.test:DESK",
     ],
@@ -59,8 +61,9 @@ test("removes every device of the removed person from the call, nobody else", as
 
   const removed = await eviction.evict("@anna:oriso.test", [MEDIA_ROOM]);
 
-  assert.equal(removed, 2);
+  assert.equal(removed, 3);
   assert.deepEqual(rooms.state.rooms[alias], [
+    "@annabel:oriso.test:Y",
     "@anna:oriso.test.evil:X",
     "@bea:oriso.test:DESK",
   ]);

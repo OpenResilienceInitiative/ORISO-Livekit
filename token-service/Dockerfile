@@ -23,7 +23,7 @@ RUN npm ci --omit=dev \
               /usr/local/bin/npx \
               /usr/local/bin/corepack
 
-COPY server.js lifecycle.js ./
+COPY server.js lifecycle.js eviction.js ./
 
 USER 1000:1000
 

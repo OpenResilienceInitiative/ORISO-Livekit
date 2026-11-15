@@ -7,7 +7,10 @@ FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb
 # rather than moving the digest pin keeps the fix independent of when the
 # upstream node tag is rebuilt; ORISO-Frontend's Dockerfile.storybook does the
 # same for the same CVE.
-RUN apk upgrade --no-cache libssl3 libcrypto3
+# CVE-2026-107891 (musl and musl-utils 1.2.6-r2, fixed in 1.2.6-r3) and
+# CVE-2026-85091 (zlib 1.3.2-r0, fixed in 1.3.2-r1) failed the same gate on
+# 2026-11-13 and kept the eviction build (16eb072) from being published.
+RUN apk upgrade --no-cache libssl3 libcrypto3 musl musl-utils zlib
 
 WORKDIR /app
 

@@ -144,6 +144,8 @@ const ROOM_ID_PATTERN = new RegExp(
 	`^![A-Za-z0-9._~=-]+:${escapeRegExp(MATRIX_SERVER_NAME)}$`
 );
 const LOCAL_USER_ID_SUFFIX = `:${MATRIX_SERVER_NAME}`;
+// UserService's reason for refusing a start by somebody who is no counsellor.
+const CALL_START_REQUIRES_COUNSELLOR = 'call_start_requires_counsellor';
 const ALL_VIDEO_CALL_SOURCES = [
 	'microphone',
 	'camera',
@@ -507,6 +509,13 @@ app.use('/livekit/jwt', async (req, res, next) => {
 	}
 	if (!callPolicy.audioAllowed && !callPolicy.videoAllowed) {
 		clearTimeout(deadlineTimer);
+		// Frank, 17 Nov 2026: only counsellors start calls. This one refusal is
+		// passed on so the client can say why; every other reason stays private.
+		if (callPolicy.denialReason === CALL_START_REQUIRES_COUNSELLOR) {
+			return res
+				.status(403)
+				.json({ error: 'forbidden', reason: CALL_START_REQUIRES_COUNSELLOR });
+		}
 		return res.status(403).json({ error: 'forbidden' });
 	}
 

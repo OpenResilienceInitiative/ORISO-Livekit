@@ -57,7 +57,7 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 	// copy only; the x/net module keeps its own vulnerable http2.
 	assert.match(
 		dockerfile,
-		/go mod edit -require=golang\.org\/x\/net@v0\.60\.0/
+		/go mod edit -require=golang\.org\/x\/net@v0\.62\.0/
 	);
 	// CVE-2026-63209. Transitive through the gRPC and Matrix client stacks, so
 	// the override is the only thing holding the floor.

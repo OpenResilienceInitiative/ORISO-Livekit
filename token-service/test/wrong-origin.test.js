@@ -29,6 +29,7 @@ let upstream;
 let callPolicy;
 let tempDirectory;
 let currentCallPolicy = { audioAllowed: true, videoAllowed: true };
+let gatewayStderr = '';
 const upstreamRequests = [];
 const callPolicyRequests = [];
 
@@ -239,7 +240,10 @@ before(async () => {
 			MATRIXRTC_CALL_POLICY_TOKEN_FILE: callPolicyTokenFile,
 			LIVEKIT_URL: 'wss://livekit.invalid'
 		},
-		stdio: 'ignore'
+		stdio: ['ignore', 'ignore', 'pipe']
+	});
+	child.stderr.on('data', (chunk) => {
+		gatewayStderr += chunk.toString('utf8');
 	});
 	await waitUntilReady();
 });
@@ -730,4 +734,40 @@ test('rejects a call room that did not invite the scoped membership reader', asy
 
 	assert.equal(response.status, 403);
 	assert.deepEqual(await response.json(), { error: 'forbidden' });
+});
+
+// Dev, 16-17 Nov 2026: a 503 on call start left no trace in the
+// gateway log. Each one now names the step that failed, and nothing else.
+test('logs which step made the authorization unavailable', async () => {
+	currentCallPolicy = null;
+	gatewayStderr = '';
+	try {
+		const response = await fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', origin: ALLOWED_ORIGIN },
+			body: JSON.stringify({
+				room: `!allowed:${MATRIX_SERVER_NAME}`,
+				openid_token: {
+					access_token: 'valid-openid-token',
+					matrix_server_name: MATRIX_SERVER_NAME
+				}
+			})
+		});
+		assert.equal(response.status, 503);
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		const logged = gatewayStderr
+			.split('\n')
+			.filter((line) => line.includes('matrixrtc_authorization_unavailable'))
+			.map((line) => JSON.parse(line));
+		assert.deepEqual(logged, [
+			{
+				event: 'matrixrtc_authorization_unavailable',
+				step: 'call_policy_rejected',
+				upstreamStatus: 503
+			}
+		]);
+		assert.doesNotMatch(gatewayStderr, /!allowed|valid-openid-token|@/);
+	} finally {
+		currentCallPolicy = { audioAllowed: true, videoAllowed: true };
+	}
 });

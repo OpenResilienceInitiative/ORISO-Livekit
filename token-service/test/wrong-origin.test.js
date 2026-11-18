@@ -675,6 +675,76 @@ test('denies token issuance when current tenant call permissions are off', async
 	}
 });
 
+const requestAllowedRoomToken = () =>
+	fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {
+		method: 'POST',
+		headers: {
+			'content-type': 'application/json',
+			origin: ALLOWED_ORIGIN
+		},
+		body: JSON.stringify({
+			room: `!allowed:${MATRIX_SERVER_NAME}`,
+			openid_token: {
+				access_token: 'valid-openid-token',
+				matrix_server_name: MATRIX_SERVER_NAME
+			}
+		})
+	});
+
+// Frank, 17 Nov 2026: only counsellors start calls. UserService refuses an
+// advice seeker's or guest's start with a reason the client can show.
+test('passes on the refusal of a start by somebody who is no counsellor', async () => {
+	const previousRequestCount = upstreamRequests.length;
+	currentCallPolicy = {
+		audioAllowed: false,
+		videoAllowed: false,
+		denialReason: 'call_start_requires_counsellor'
+	};
+	try {
+		const response = await requestAllowedRoomToken();
+
+		assert.equal(response.status, 403);
+		assert.deepEqual(await response.json(), {
+			error: 'forbidden',
+			reason: 'call_start_requires_counsellor'
+		});
+		assert.equal(upstreamRequests.length, previousRequestCount);
+	} finally {
+		currentCallPolicy = { audioAllowed: true, videoAllowed: true };
+	}
+});
+
+test('never echoes any other denial reason to the client', async () => {
+	currentCallPolicy = {
+		audioAllowed: false,
+		videoAllowed: false,
+		denialReason: 'something_internal'
+	};
+	try {
+		const response = await requestAllowedRoomToken();
+
+		assert.equal(response.status, 403);
+		assert.deepEqual(await response.json(), { error: 'forbidden' });
+	} finally {
+		currentCallPolicy = { audioAllowed: true, videoAllowed: true };
+	}
+});
+
+test('a reason never turns a grant into a denial', async () => {
+	currentCallPolicy = {
+		audioAllowed: true,
+		videoAllowed: true,
+		denialReason: 'call_start_requires_counsellor'
+	};
+	try {
+		const response = await requestAllowedRoomToken();
+
+		assert.equal(response.status, 200);
+	} finally {
+		currentCallPolicy = { audioAllowed: true, videoAllowed: true };
+	}
+});
+
 test('denies a call room without one restricted ORISO source room', async () => {
 	const previousRequestCount = upstreamRequests.length;
 	const response = await fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {

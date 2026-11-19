@@ -22,36 +22,16 @@ jobs:
       with:
         node_version: '22'
 
-    - name: Create Docker image
+    - name: Build and scan the policy gateway
       uses: ./.github/actions/docker-build-push
       with:
         push_to_ghcr: false
         image_name: matrixrtc-auth-policy-gateway
-        github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: token-service
 
-    - name: Create privacy-safe authorization service image
+    - name: Build and scan the authorization service
       uses: ./.github/actions/docker-build-push
       with:
         push_to_ghcr: false
         image_name: matrixrtc-authorization-service
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        context_dir: authorization-service
-
-    - name: Verify policy gateway loads for scanning
-      uses: ./.github/actions/docker-build-push
-      with:
-        push_to_ghcr: false
-        load: true
-        image_name: matrixrtc-auth-policy-gateway
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        context_dir: token-service
-
-    - name: Verify authorization service loads for scanning
-      uses: ./.github/actions/docker-build-push
-      with:
-        push_to_ghcr: false
-        load: true
-        image_name: matrixrtc-authorization-service
-        github_token: ${{ secrets.GITHUB_TOKEN }}
         context_dir: authorization-service

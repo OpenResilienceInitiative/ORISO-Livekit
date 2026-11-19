@@ -32,36 +32,7 @@ jobs:
       with:
         node_version: '22'
 
-    # Build into the runner's daemon and scan there, BEFORE anything reaches
-    # ghcr. The previous order pushed first and scanned after, so a HIGH finding
-    # left the vulnerable image published while the workflow went red — main was
-    # red in 11 of 23 runs, most recently on CVE-2026-84445 in a transitive
-    # gRPC-Go dependency, with no code change involved.
-    - name: Build the policy gateway for scanning
-      id: policy_scan_build
-      uses: ./.github/actions/docker-build-push
-      with:
-        push_to_ghcr: false
-        load: true
-        # `docker load` cannot take a manifest list. release-image.yml passes
-        # this explicitly for the same reason; relying on the action to derive
-        # it from `load` has failed every CI - Main run since 2026-08-06.
-        platforms: linux/amd64
-        image_name: matrixrtc-auth-policy-gateway
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        context_dir: token-service
-
-    - name: Reject fixable policy gateway vulnerabilities before publishing
-      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-      with:
-        image-ref: ${{ steps.policy_scan_build.outputs.local_image_id }}
-        format: table
-        exit-code: '1'
-        ignore-unfixed: true
-        vuln-type: os,library
-        severity: CRITICAL,HIGH
-
-    - name: Create and Publish Docker image
+    - name: Build, scan and publish the policy gateway
       id: policy_image
       uses: ./.github/actions/docker-build-push
       with:
@@ -77,36 +48,7 @@ jobs:
         subject-digest: ${{ steps.policy_image.outputs.digest }}
         push-to-registry: true
 
-    # Build into the runner's daemon and scan there, BEFORE anything reaches
-    # ghcr. The previous order pushed first and scanned after, so a HIGH finding
-    # left the vulnerable image published while the workflow went red — main was
-    # red in 11 of 23 runs, most recently on CVE-2026-84445 in a transitive
-    # gRPC-Go dependency, with no code change involved.
-    - name: Build the authorization service for scanning
-      id: issuer_scan_build
-      uses: ./.github/actions/docker-build-push
-      with:
-        push_to_ghcr: false
-        load: true
-        # `docker load` cannot take a manifest list. release-image.yml passes
-        # this explicitly for the same reason; relying on the action to derive
-        # it from `load` has failed every CI - Main run since 2026-08-06.
-        platforms: linux/amd64
-        image_name: matrixrtc-authorization-service
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        context_dir: authorization-service
-
-    - name: Reject fixable authorization service vulnerabilities before publishing
-      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-      with:
-        image-ref: ${{ steps.issuer_scan_build.outputs.local_image_id }}
-        format: table
-        exit-code: '1'
-        ignore-unfixed: true
-        vuln-type: os,library
-        severity: CRITICAL,HIGH
-
-    - name: Create and Publish privacy-safe authorization service
+    - name: Build, scan and publish the authorization service
       id: issuer_image
       uses: ./.github/actions/docker-build-push
       with:

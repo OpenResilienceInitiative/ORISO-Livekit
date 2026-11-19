@@ -3,6 +3,7 @@ const helmet = require('helmet');
 const { readFileSync } = require('node:fs');
 const { createLifecycleFromEnvironment } = require('./lifecycle');
 const { createEvictionFromEnvironment } = require('./eviction');
+const { createRateLimiter } = require('./rate-limiter');
 // Moderator removal from a running call; absent unless LiveKit is configured.
 const eviction = createEvictionFromEnvironment();
 let lifecycle;
@@ -247,25 +248,6 @@ const authorizationUnavailable = (res, step, upstreamStatus) => {
 	return res.status(503).json({ error: 'authorization unavailable' });
 };
 
-const createRateLimiter = () => {
-	const clients = new Map();
-	return (req, res, next) => {
-		const now = Date.now();
-		const key = req.ip;
-		const current = clients.get(key);
-		if (!current || now - current.startedAt >= RATE_LIMIT_WINDOW_MS) {
-			clients.set(key, { count: 1, startedAt: now });
-			return next();
-		}
-		current.count += 1;
-		if (current.count > RATE_LIMIT_MAX_REQUESTS) {
-			res.set('retry-after', String(Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)));
-			return res.status(429).json({ error: 'rate limit exceeded' });
-		}
-		return next();
-	};
-};
-
 const app = express();
 app.disable('x-powered-by');
 app.use(
@@ -299,7 +281,7 @@ app.use('/livekit/jwt', (req, res, next) => {
 	return next();
 });
 
-app.use('/livekit/jwt', createRateLimiter());
+app.use('/livekit/jwt', createRateLimiter(RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS));
 
 // One canonical room field per route: the room checked below is exactly the
 // room forwarded upstream and sent as callRoomId.

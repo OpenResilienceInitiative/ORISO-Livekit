@@ -10,11 +10,9 @@ RUN wget -qO source.tar.gz "https://github.com/element-hq/lk-jwt-service/archive
     && mkdir /src \
     && tar -xzf source.tar.gz --strip-components=1 -C /src
 
-# Go 1.26.10 clears the stdlib findings the image gate rejects. 1.26.9 was
-# rejected for CVE-2026-111943 (crypto/x509), fixed in 1.26.10; 1.26.6 before
-# it for CVE-2026-78667, CVE-2026-78669 and CVE-2026-97031. The toolchain version is what Trivy reports as `stdlib`, so it moves
-# with the builder image.
-FROM --platform=${BUILDPLATFORM} golang:1.26.10-alpine@sha256:5cb67f19c5e7994dcb80c074f7cfca8aeeada45bbdca035f73df269cefdcce61 AS builder
+# Trivy checks the Go standard library version built into the two binaries.
+# Go 1.26.11 fixes CVE-2026-97054, which the image gate reports on 1.26.10.
+FROM --platform=${BUILDPLATFORM} golang:1.26.11-alpine@sha256:ecb67f987aa1a57794c91d19ade7ae0209f2f0f5496aaef9e6ae85ddf92d02ab AS builder
 RUN apk add --no-cache patch
 WORKDIR /src
 COPY --from=source /src /src

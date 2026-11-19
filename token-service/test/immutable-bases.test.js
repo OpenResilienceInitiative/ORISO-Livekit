@@ -33,13 +33,10 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 		'utf8'
 	);
 
-	// 1.26.10, not 1.26.9: the latter leaves CVE-2026-111943 (crypto/x509)
-	// open. Earlier, 1.26.6 left CVE-2026-78667 (net/http Range
-	// header), CVE-2026-78669 (HTTP/2 SETTINGS) and CVE-2026-97031 (crypto/tls
-	// ECH) open, and the image gate rejects all three.
+	// The authorization service image gate rejects Go 1.26.10 (CVE-2026-97054).
 	assert.match(
 		dockerfile,
-		/golang:1\.26\.10-alpine@sha256:5cb67f19c5e7994dcb80c074f7cfca8aeeada45bbdca035f73df269cefdcce61/
+		/golang:1\.26\.11-alpine@sha256:ecb67f987aa1a57794c91d19ade7ae0209f2f0f5496aaef9e6ae85ddf92d02ab/
 	);
 	// 1.83.2, not 1.83.1: the latter fixes CVE-2026-84304 and leaves
 	// CVE-2026-84445 open.

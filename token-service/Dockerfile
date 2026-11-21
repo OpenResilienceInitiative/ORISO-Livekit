@@ -26,7 +26,7 @@ RUN npm ci --omit=dev \
               /usr/local/bin/npx \
               /usr/local/bin/corepack
 
-COPY server.js lifecycle.js eviction.js ./
+COPY server.js lifecycle.js eviction.js rate-limiter.js ./
 
 USER 1000:1000
 

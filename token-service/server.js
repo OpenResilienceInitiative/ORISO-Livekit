@@ -2,6 +2,9 @@ const express = require('express');
 const helmet = require('helmet');
 const { readFileSync } = require('node:fs');
 const { createLifecycleFromEnvironment } = require('./lifecycle');
+const { createEvictionFromEnvironment } = require('./eviction');
+// Moderator removal from a running call; absent unless LiveKit is configured.
+const eviction = createEvictionFromEnvironment();
 let lifecycle;
 const lifecycleRouter = express.Router();
 const lifecycleReady = createLifecycleFromEnvironment().then((value) => {
@@ -141,6 +144,8 @@ const ROOM_ID_PATTERN = new RegExp(
 	`^![A-Za-z0-9._~=-]+:${escapeRegExp(MATRIX_SERVER_NAME)}$`
 );
 const LOCAL_USER_ID_SUFFIX = `:${MATRIX_SERVER_NAME}`;
+// UserService's reason for refusing a start by somebody who is no counsellor.
+const CALL_START_REQUIRES_COUNSELLOR = 'call_start_requires_counsellor';
 const ALL_VIDEO_CALL_SOURCES = [
 	'microphone',
 	'camera',
@@ -227,6 +232,21 @@ const sourceRoomFromJoinRule = (joinRule) => {
 	return sourceRooms.length === 1 ? sourceRooms[0] : null;
 };
 
+// Every refusal for lack of an answer is logged with the step that failed.
+// Without it a 503 on call start left no trace in the gateway log at all
+// (Dev, 16-17 Nov 2026). Steps and status codes only: no room,
+// user or token ever goes into the log.
+const authorizationUnavailable = (res, step, upstreamStatus) => {
+	console.warn(
+		JSON.stringify({
+			event: 'matrixrtc_authorization_unavailable',
+			step,
+			...(upstreamStatus === undefined ? {} : { upstreamStatus })
+		})
+	);
+	return res.status(503).json({ error: 'authorization unavailable' });
+};
+
 const createRateLimiter = () => {
 	const clients = new Map();
 	return (req, res, next) => {
@@ -255,6 +275,7 @@ app.use(
 );
 app.use(lifecycleRouter);
 app.use(express.json({ limit: '16kb', strict: true }));
+if (eviction) eviction.mount(app);
 
 app.get('/health', (_req, res) => {
 	res.json({ status: 'ok', service: 'matrixrtc-auth-policy-gateway' });
@@ -331,7 +352,7 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		});
 	} catch {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'openid_userinfo_unreachable');
 	}
 	if (!userInfoResponse.ok) {
 		clearTimeout(deadlineTimer);
@@ -349,7 +370,7 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		userInfo = await readJsonLimited(userInfoResponse);
 	} catch {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'openid_userinfo_unreadable');
 	}
 	const matrixUserId = userInfo?.sub;
 	if (
@@ -400,11 +421,11 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		});
 	} catch {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'matrix_membership_unreachable');
 	}
 	if (!joinedMembersResponse.ok) {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'matrix_joined_members_failed');
 	}
 
 	let membership;
@@ -412,7 +433,7 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		membership = await readJsonLimited(joinedMembersResponse);
 	} catch {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'matrix_joined_members_unreadable');
 	}
 	if (
 		typeof membership?.joined !== 'object' ||
@@ -444,7 +465,7 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		});
 	} catch {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'matrix_join_rule_unreachable');
 	}
 	if (!joinRuleResponse.ok) {
 		clearTimeout(deadlineTimer);
@@ -458,7 +479,7 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		);
 	} catch {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'matrix_join_rule_unreadable');
 	}
 	if (!sourceRoomId) {
 		clearTimeout(deadlineTimer);
@@ -480,11 +501,11 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		});
 	} catch {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'call_policy_unreachable');
 	}
 	if (!callPolicyResponse.ok) {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'call_policy_rejected', callPolicyResponse.status);
 	}
 
 	let callPolicy;
@@ -492,17 +513,24 @@ app.use('/livekit/jwt', async (req, res, next) => {
 		callPolicy = await readJsonLimited(callPolicyResponse);
 	} catch {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'call_policy_unreadable');
 	}
 	if (
 		typeof callPolicy?.audioAllowed !== 'boolean' ||
 		typeof callPolicy?.videoAllowed !== 'boolean'
 	) {
 		clearTimeout(deadlineTimer);
-		return res.status(503).json({ error: 'authorization unavailable' });
+		return authorizationUnavailable(res, 'call_policy_malformed');
 	}
 	if (!callPolicy.audioAllowed && !callPolicy.videoAllowed) {
 		clearTimeout(deadlineTimer);
+		// Frank, 17 Nov 2026: only counsellors start calls. This one refusal is
+		// passed on so the client can say why; every other reason stays private.
+		if (callPolicy.denialReason === CALL_START_REQUIRES_COUNSELLOR) {
+			return res
+				.status(403)
+				.json({ error: 'forbidden', reason: CALL_START_REQUIRES_COUNSELLOR });
+		}
 		return res.status(403).json({ error: 'forbidden' });
 	}
 
@@ -529,6 +557,7 @@ async function proxyToAuthorizationService(req, res, upstreamPath) {
 		);
 	} catch {
 		clearTimeout(req.authorizationDeadlineTimer);
+		console.warn(JSON.stringify({ event: 'matrixrtc_authorization_unavailable', step: 'authorization_service_unreachable' }));
 		return res.status(502).json({ error: 'authorization service unavailable' });
 	}
 
@@ -540,6 +569,7 @@ async function proxyToAuthorizationService(req, res, upstreamPath) {
 		);
 	} catch {
 		clearTimeout(req.authorizationDeadlineTimer);
+		console.warn(JSON.stringify({ event: 'matrixrtc_authorization_unavailable', step: 'authorization_service_unreadable' }));
 		return res.status(502).json({ error: 'authorization service unavailable' });
 	}
 	clearTimeout(req.authorizationDeadlineTimer);
@@ -551,7 +581,7 @@ async function proxyToAuthorizationService(req, res, upstreamPath) {
 			const issued = JSON.parse(responseBody);
 			await lifecycle.registerIssued(issued.jwt, req.verifiedMatrixUserId);
 		} catch {
-			return res.status(503).json({ error: 'authorization unavailable' });
+			return authorizationUnavailable(res, 'token_lifecycle_unavailable');
 		}
 	}
 	res.status(upstreamResponse.status);

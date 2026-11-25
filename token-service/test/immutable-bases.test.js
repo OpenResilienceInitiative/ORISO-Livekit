@@ -33,13 +33,10 @@ test('authorization service build uses the fixed Go and gRPC security floors', (
 		'utf8'
 	);
 
-	// 1.26.10, not 1.26.9: the latter leaves CVE-2026-111943 (crypto/x509)
-	// open. Earlier, 1.26.6 left CVE-2026-78667 (net/http Range
-	// header), CVE-2026-78669 (HTTP/2 SETTINGS) and CVE-2026-97031 (crypto/tls
-	// ECH) open, and the image gate rejects all three.
+	// The authorization service image gate rejects Go 1.26.10 (CVE-2026-97054).
 	assert.match(
 		dockerfile,
-		/golang:1\.26\.10-alpine@sha256:5cb67f19c5e7994dcb80c074f7cfca8aeeada45bbdca035f73df269cefdcce61/
+		/golang:1\.26\.11-alpine@sha256:ecb67f987aa1a57794c91d19ade7ae0209f2f0f5496aaef9e6ae85ddf92d02ab/
 	);
 	// 1.83.2, not 1.83.1: the latter fixes CVE-2026-84304 and leaves
 	// CVE-2026-84445 open.
@@ -81,64 +78,54 @@ test('gateway and authorization images declare verifiable numeric non-root users
 	assert.match(authorizationDockerfile, /^USER 65532:65532$/m);
 });
 
-test('release workflow publishes immutable multi-platform images with evidence', () => {
-	const buildAction = readFileSync(
+test('both image publishers attest the digest returned by the image gate', () => {
+	const action = './.github/actions/docker-build-push';
+
+	for (const path of ['ci-main.yml', 'release-image.yml']) {
+		const workflow = readFileSync(resolve(__dirname, '../../.github/workflows', path), 'utf8');
+
+		assert.equal(workflow.split(`uses: ${action}`).length - 1, 2, path);
+		assert.equal((workflow.match(/push_to_ghcr: true/g) ?? []).length, 2, path);
+		assert.doesNotMatch(workflow, /docker\/build-push-action@/, path);
+
+		for (const image of ['policy_image', 'issuer_image']) {
+			assert.match(workflow, new RegExp(`id: ${image}\\b`), path);
+			assert.ok(workflow.includes('subject-digest: ${{ steps.' + image + '.outputs.digest }}'), path);
+		}
+
+		assert.match(workflow, /id-token: write/);
+		assert.match(workflow, /attestations: write/);
+		assert.match(workflow, /actions\/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6/);
+	}
+});
+
+test('the image gate builds one multi-platform archive before any publication', () => {
+	const action = readFileSync(
 		resolve(__dirname, '../../.github/actions/docker-build-push/action.yml'),
 		'utf8'
 	);
-	const mainWorkflow = readFileSync(
-		resolve(__dirname, '../../.github/workflows/ci-main.yml'),
+
+	assert.equal((action.match(/uses: docker\/build-push-action@/g) ?? []).length, 1);
+	assert.match(action, /linux\/amd64,linux\/arm64/);
+	assert.match(action, /push: false/);
+	assert.match(action, /type=oci,dest=/);
+	assert.match(action, /provenance: mode=max/);
+	assert.match(action, /sbom: true/);
+	assert.ok(action.includes('steps.publish.outputs.digest'));
+
+	const scan = action.indexOf('scan-image-archive.sh');
+	const publish = action.indexOf('publish-image-archive.sh');
+	assert.ok(scan >= 0 && publish > scan, 'scan must precede publishing the archive');
+});
+
+test('pull requests validate both images without registry writes', () => {
+	const workflow = readFileSync(
+		resolve(__dirname, '../../.github/workflows/ci-pull-request.yml'),
 		'utf8'
 	);
 
-	assert.match(buildAction, /linux\/amd64,linux\/arm64/);
-	assert.match(
-		buildAction,
-		/provenance: \$\{\{ inputs\.load == 'true' && 'false' \|\| 'mode=max' \}\}/,
-	);
-	assert.match(buildAction, /sbom: \$\{\{ inputs\.load != 'true' \}\}/);
-	assert.match(buildAction, /value: \$\{\{ steps\.build\.outputs\.digest \}\}/);
-	assert.match(mainWorkflow, /id-token: write/);
-	assert.match(mainWorkflow, /attestations: write/);
-	assert.match(
-		mainWorkflow,
-		/aquasecurity\/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25/
-	);
-	assert.match(
-		mainWorkflow,
-		/actions\/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6/
-	);
-	// Trivy must name the artifact by content, never by a tag: a tag can move
-	// between the build and the scan, and then the report describes something
-	// other than what ships. The scan now runs BEFORE the push, so the registry
-	// digest does not exist yet and the immutable handle is the loaded image's
-	// content id instead.
-	const scanRefs = mainWorkflow.match(/image-ref: \$\{\{ steps\.\S+ \}\}/g) ?? [];
-	assert.equal(scanRefs.length, 2);
-	for (const ref of scanRefs) {
-		assert.match(ref, /outputs\.(local_image_id|digest)\b/);
-	}
-
-	// Ordering is the point of the scan, and nothing checked it before: the
-	// workflow used to push and then scan, so a HIGH finding left the
-	// vulnerable image published and only turned the run red. Each scan must
-	// come before the publish of the image it covers.
-	for (const [scan, publish] of [
-		['policy_scan_build', 'policy_image'],
-		['issuer_scan_build', 'issuer_image']
-	]) {
-		const scanAt = mainWorkflow.indexOf(`steps.${scan}.outputs`);
-		const publishAt = mainWorkflow.indexOf(`id: ${publish}`);
-		assert.ok(scanAt > 0, `no scan step for ${scan}`);
-		assert.ok(publishAt > 0, `no publish step ${publish}`);
-		assert.ok(
-			scanAt < publishAt,
-			`${scan} must be scanned before ${publish} is published`
-		);
-	}
-
-	assert.equal(
-		(mainWorkflow.match(/subject-digest: \$\{\{ steps\./g) ?? []).length,
-		2
-	);
+	assert.equal((workflow.match(/push_to_ghcr: false/g) ?? []).length, 2);
+	assert.doesNotMatch(workflow, /push_to_ghcr: true|packages: write|load: true/);
+	assert.match(workflow, /context_dir: token-service/);
+	assert.match(workflow, /context_dir: authorization-service/);
 });

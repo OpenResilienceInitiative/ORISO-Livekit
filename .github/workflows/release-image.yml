@@ -57,6 +57,12 @@ jobs:
           POLICY_GATEWAY_IMAGE="${REGISTRY}/${ORG}/${POLICY_GATEWAY_IMAGE_NAME}:${VERSION}"
           AUTHORIZATION_SERVICE_IMAGE="${REGISTRY}/${ORG}/${AUTHORIZATION_SERVICE_IMAGE_NAME}:${VERSION}"
 
+          for image in "${POLICY_GATEWAY_IMAGE}" "${AUTHORIZATION_SERVICE_IMAGE}"; do
+            if docker buildx imagetools inspect "${image}" >/dev/null 2>&1; then
+              echo "::warning::Image tag ${image} already exists and will be overwritten by this release rerun."
+            fi
+          done
+
           echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
           echo "POLICY_GATEWAY_IMAGE=${POLICY_GATEWAY_IMAGE}" >> "${GITHUB_ENV}"
           echo "AUTHORIZATION_SERVICE_IMAGE=${AUTHORIZATION_SERVICE_IMAGE}" >> "${GITHUB_ENV}"

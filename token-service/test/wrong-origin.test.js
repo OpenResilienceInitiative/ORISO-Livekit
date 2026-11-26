@@ -63,6 +63,12 @@ before(async () => {
 				response.end('{');
 				return;
 			}
+			// GHSA-rq24-fh66-rq7x: a homeserver vouching for another server's user.
+			if (url.searchParams.get('access_token') === 'foreign-subject-token') {
+				response.writeHead(200, { 'content-type': 'application/json' });
+				response.end(JSON.stringify({ sub: '@victim:attacker.example' }));
+				return;
+			}
 			if (url.searchParams.get('access_token') !== 'valid-openid-token') {
 				response.writeHead(401, { 'content-type': 'application/json' });
 				response.end(JSON.stringify({ errcode: 'M_UNAUTHORIZED' }));
@@ -372,6 +378,51 @@ test('rejects a spoofed claimed Matrix user', async () => {
 
 	assert.equal(response.status, 401);
 });
+
+// GHSA-rq24-fh66-rq7x (ORISO-Livekit#75): the token's `sub` must belong to the
+// homeserver that issued it, and only our own homeserver is ever asked.
+for (const path of ['/sfu/get', '/get_token']) {
+	test(`rejects an OpenID subject from another homeserver (${path})`, async () => {
+		const previousUpstreamCount = upstreamRequests.length;
+		const previousPolicyCount = callPolicyRequests.length;
+		const response = await fetch(`${SERVICE_URL}/livekit/jwt${path}`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', origin: ALLOWED_ORIGIN },
+			body: JSON.stringify({
+				[path === '/sfu/get' ? 'room' : 'room_id']: `!allowed:${MATRIX_SERVER_NAME}`,
+				openid_token: {
+					access_token: 'foreign-subject-token',
+					matrix_server_name: MATRIX_SERVER_NAME
+				},
+				...(path === '/get_token'
+					? { member: { claimed_user_id: '@victim:attacker.example' } }
+					: {})
+			})
+		});
+
+		assert.equal(response.status, 401);
+		assert.equal(upstreamRequests.length, previousUpstreamCount);
+		assert.equal(callPolicyRequests.length, previousPolicyCount);
+	});
+
+	test(`never asks another homeserver to vouch for a user (${path})`, async () => {
+		const previousUpstreamCount = upstreamRequests.length;
+		const response = await fetch(`${SERVICE_URL}/livekit/jwt${path}`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', origin: ALLOWED_ORIGIN },
+			body: JSON.stringify({
+				[path === '/sfu/get' ? 'room' : 'room_id']: `!allowed:${MATRIX_SERVER_NAME}`,
+				openid_token: {
+					access_token: 'valid-openid-token',
+					matrix_server_name: 'attacker.example'
+				}
+			})
+		});
+
+		assert.equal(response.status, 403);
+		assert.equal(upstreamRequests.length, previousUpstreamCount);
+	});
+}
 
 test('fails closed when the room-membership authority is unavailable', async () => {
 	const response = await fetch(`${SERVICE_URL}/livekit/jwt/sfu/get`, {

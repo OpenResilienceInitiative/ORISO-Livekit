@@ -10,6 +10,13 @@ records and standard-library `log` records. This is required because the
 pinned upstream revision includes Matrix users, rooms, member structures and
 occasionally OpenID data in error-level attributes.
 
+The overrides also backport the upstream v0.8.0 fix for GHSA-rq24-fh66-rq7x
+(`openid_subject_check.go`): the `sub` returned by `/openid/userinfo` must be a
+Matrix user ID on the homeserver that issued the OpenID token, otherwise the
+request is refused with `M_UNAUTHORIZED`. The policy gateway enforces the same
+rule in front of this service; the backport keeps it closed for any path that
+bypasses the gateway (for example `matrixrtcAuth.livekitNodeCidrs`).
+
 The image build may also raise a vulnerable transitive dependency to an
 explicit fixed version while keeping the upstream source revision immutable.
 The Dockerfile currently requires `google.golang.org/grpc` 1.82.1 and builds

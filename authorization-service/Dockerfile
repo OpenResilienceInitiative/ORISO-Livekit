@@ -23,6 +23,8 @@ COPY overrides/call_policy_test.go ./call_policy_test.go
 COPY overrides/logging_test.go ./logging_test.go
 COPY overrides/federation_url_override.go ./federation_url_override.go
 COPY overrides/federation_url_override_test.go ./federation_url_override_test.go
+COPY overrides/openid_subject_check.go ./openid_subject_check.go
+COPY overrides/openid_subject_check_test.go ./openid_subject_check_test.go
 # Overrides for findings the image vulnerability gate rejects:
 #   grpc      1.83.2 — CVE-2026-84304 and CVE-2026-84445 (DoS via malformed RPC
 #                      requests). 1.83.1 fixes only the first of the two.

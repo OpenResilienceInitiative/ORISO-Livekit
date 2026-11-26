@@ -56,6 +56,8 @@ func main() {
 	if err := installFederationURLOverridesFromEnvironment(); err != nil {
 		log.Fatal("Invalid LIVEKIT_FEDERATION_URL_OVERRIDES configuration")
 	}
+	// GHSA-rq24-fh66-rq7x: after the overrides, so it wraps every exchange path.
+	installOpenIDSubjectServerCheck()
 
 	config, err := parseConfig()
 	if err != nil {
